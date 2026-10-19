@@ -304,8 +304,8 @@ void USART1_IRQHandler(void) {
  * conectamos el USB — si no se dispara, hay un problema en la
  * configuración del USB OTG o en los pines PA11/PA12.
  */
-/* [v0.2] Definición débil: la reemplaza usb_test.c (fase 1) o usb_hid.c (fase 5+).
- *        Así las fases sin USB (2-4) enlazan sin errores. */
+/* [v0.2] Weak definition: overridden by usb_test.c (phase 1) or usb_hid.c (phase 5+),
+ *        so phases without USB (2-4) still link. */
 __attribute__((weak)) PCD_HandleTypeDef hpcd_USB_OTG_FS;
 
 void OTG_FS_IRQHandler(void) {

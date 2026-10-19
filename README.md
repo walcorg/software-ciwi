@@ -1,92 +1,93 @@
-# software-ciwi-v0.2
+# software-ciwi
 
-Firmware de prueba de la **CiWi** (WALCORG) para la tarjeta **WeAct STM32F405RGT6 Core Board**,
-basado en el fork de Trezor. Esta versión no agrega funciones: reorganiza el borrador
-`scripts-anthropic-for-ciwi-based-on-trezor` para que **compile y arranque en la tarjeta**,
-y corrige los errores que lo impedían. Lista de cambios: [`CAMBIOS.md`](CAMBIOS.md).
+Test firmware for the **CiWi** cold wallet (WALCORG) on the **WeAct STM32F405RGT6 Core Board**,
+based on a fork of the Trezor firmware. Version 0.2 adds no new features: it reorganizes the
+original draft so that it **builds and boots on the board**, and fixes the errors that prevented
+it. Full list of fixes: [`CHANGES.md`](CHANGES.md).
 
-Las 6 fases y la prueba de LED compilan con `arm-none-eabi-gcc 13.2`. Los binarios ya
-compilados están en `dist/`.
+All 6 phases and the LED test build with `arm-none-eabi-gcc 13.2`. Prebuilt binaries are in `dist/`.
 
-## Qué necesitas
+## What you need
 
-| Cosa | Para qué |
+| Item | Purpose |
 | --- | --- |
-| WeAct STM32F405RGT6 Core Board | Cristal HSE de 8 MHz, LED en **PB2**, botón KEY en PC13 |
-| ST-Link V2 (o clon) | Cargar firmware y depurar por SWD (DIO, CLK, GND, 3V3) |
-| Adaptador USB-UART 3.3 V | Ver los mensajes de prueba: **PA9 (TX) → RX del adaptador**, GND común, 115200 8N1 |
-| Cable USB-C | Probar USB (fases 1 y 5) |
-| Pantalla ILI9488 3.5" SPI con XPT2046 | Fases 2 a 6 (pines en la tabla de abajo) |
-| `arm-none-eabi-gcc`, `make`, `openocd`, `git` | Compilar y cargar (Ubuntu: `sudo apt install gcc-arm-none-eabi make openocd git`) |
+| WeAct STM32F405RGT6 Core Board | 8 MHz HSE crystal, user LED on **PB2**, KEY button on PC13 |
+| ST-Link V2 (or clone) | Flashing and debugging over SWD (DIO, CLK, GND, 3V3) |
+| 3.3 V USB-UART adapter | Test output: **PA9 (TX) → adapter RX**, common GND, 115200 8N1 |
+| USB-C cable | USB tests (phases 1 and 5) |
+| 3.5" ILI9488 SPI display with XPT2046 | Phases 2 to 6 (pins below) |
+| `arm-none-eabi-gcc`, `make`, `openocd`, `git` | Build and flash (Ubuntu: `sudo apt install gcc-arm-none-eabi make openocd git`) |
 
-## Cargar un binario ya compilado (lo más rápido)
+## Flash a prebuilt binary (fastest)
 
 ```bash
 openocd -f tools/openocd_weact_f405.cfg -c "program dist/ciwi-blink.elf verify reset exit"
 openocd -f tools/openocd_weact_f405.cfg -c "program dist/ciwi-phase1.elf verify reset exit"
 ```
 
-Abre la terminal serie (por ejemplo `picocom -b 115200 /dev/ttyUSB0`) antes de dar reset.
+Open a serial terminal (for example `picocom -b 115200 /dev/ttyUSB0`) before resetting the board.
 
-## Compilar
+## Build
 
 ```bash
-./tools/fetch_vendor.sh      # descarga HAL de ST, CMSIS y trezor-crypto (commits fijos)
-make blink                   # prueba mínima de LED
-make PHASE=1                 # o 2, 3, 4, 5, 6 → build/phaseN/ciwi-phaseN.{elf,bin,hex}
-make flash PHASE=1           # compila y carga con OpenOCD
+./tools/fetch_vendor.sh      # downloads ST HAL, CMSIS and trezor-crypto (pinned commits)
+make blink                   # minimal LED test
+make PHASE=1                 # or 2..6 → build/phaseN/ciwi-phaseN.{elf,bin,hex}
+make flash PHASE=1           # build and flash with OpenOCD
 make flash-blink
 ```
 
-`LAYOUT=standalone` (por defecto) coloca el firmware en **0x08000000** para que la tarjeta arranque
-sin bootloader. `LAYOUT=bootloader` lo coloca en 0x08010000 para cuando exista un bootloader.
+`LAYOUT=standalone` (default) places the firmware at **0x08000000** so the board boots without a
+bootloader. `LAYOUT=bootloader` places it at 0x08010000 for when a bootloader exists.
 
-## Plan de pruebas, una fase a la vez
+## Test plan, one phase at a time
 
-No pases a la siguiente fase hasta que la anterior pase.
+Do not move to the next phase until the current one passes.
 
-| Paso | Binario | Qué conectar | Debe pasar |
+| Step | Binary | Connect | Pass criteria |
 | --- | --- | --- | --- |
-| 0 | `ciwi-blink` | Solo ST-Link | El LED azul (PB2) parpadea |
-| 1 | `ciwi-phase1` | + USB-UART en PA9 y USB-C | En la terminal: reloj 168 MHz, LED, UART y RNG en **OK**; la PC detecta un dispositivo USB. La prueba del click-wheel dará **WARN** (busca un AS5600, ver notas) |
-| 2 | `ciwi-phase2` | + pantalla ILI9488 | Colores, texto y patrones de prueba en pantalla |
-| 3 | `ciwi-phase3` | + pantalla | Menú navegable (entradas de prueba) |
-| 4 | `ciwi-phase4` | + pantalla | Pantallas de la interfaz, retroiluminación y animaciones |
-| 5 | `ciwi-phase5` | + pantalla + USB-C | Vectores BIP39/BIP32/ECDSA en OK por UART; `trezorctl get-features` responde. **Solo semillas de prueba y testnet** |
-| 6 | `ciwi-phase6` | + pantalla + USB-C | Reporte de auditoría de seguridad completo por UART. RDP **no** se aplica automáticamente; no lo actives en la tarjeta de desarrollo |
+| 0 | `ciwi-blink` | ST-Link only | Blue LED (PB2) blinks |
+| 1 | `ciwi-phase1` | + USB-UART on PA9 and USB-C | Terminal shows 168 MHz clock, LED, UART and RNG **OK**; the PC detects a USB device. The click-wheel test reports **WARN** (it looks for an AS5600, see notes) |
+| 2 | `ciwi-phase2` | + ILI9488 display | Colors, text and test patterns on screen |
+| 3 | `ciwi-phase3` | + display | Navigable menu (test inputs) |
+| 4 | `ciwi-phase4` | + display | UI screens, backlight and animations |
+| 5 | `ciwi-phase5` | + display + USB-C | BIP39/BIP32/ECDSA vectors OK over UART; `trezorctl get-features` responds. **Test seeds and testnet only** |
+| 6 | `ciwi-phase6` | + display + USB-C | Full security audit report over UART. RDP is **not** applied automatically; do not enable it on the dev board |
 
-### Pines usados
+### Pins
 
-| Función | Pin |
+| Function | Pin |
 | --- | --- |
-| LED de usuario | PB2 |
-| UART debug TX | PA9 (USART1) |
+| User LED | PB2 |
+| Debug UART TX | PA9 (USART1) |
 | USB FS | PA11 / PA12 |
-| Pantalla SPI1 | PA5 SCK, PA7 MOSI, PA6 MISO, PC4 CS, PC5 DC, PB0 RST, PB1 BL |
-| Touch XPT2046 | PC6 CS, **PC7 IRQ [verificar]** (comparte SPI1) |
+| Display SPI1 | PA5 SCK, PA7 MOSI, PA6 MISO, PC4 CS, PC5 DC, PB0 RST, PB1 BL |
+| Touch XPT2046 | PC6 CS, **PC7 IRQ [to verify]** (shares SPI1) |
 | Click-wheel (I2C) | PB6 SCL / PB7 SDA |
 
-## Estructura
+## Layout
 
-| Carpeta | Contenido |
+| Folder | Contents |
 | --- | --- |
-| `platform/` | Arranque, linker scripts, reloj, UART, interrupciones, configuración del HAL |
-| `drivers/` | Pantalla ILI9488, touch, retroiluminación, click-wheel, capa de compatibilidad con la API de pantalla de Trezor |
-| `ui/` | Entradas, menú, componentes y pantallas |
-| `wallet/` | Cripto (vectores), almacenamiento NORCOW, USB HID, núcleo de la wallet, FSM, firma |
-| `security/` | Protección de flash, MPU, retardo de PIN, detección de manipulación, auditoría |
-| `phases/phaseN/` | Programa de prueba de cada fase |
-| `trezor-integration/` | Archivos que **reemplazan** a los de Trezor legacy (`protect.c`, `buttons.c`, `layout.c`...). No se compilan aquí; son para cuando se integre con el árbol de Trezor |
-| `tools/` | OpenOCD, gdbinit, `fetch_vendor.sh` |
-| `dist/` | Binarios compilados |
-| `docs/original-notes/` | Makefiles y notas originales, como referencia |
+| `platform/` | Startup, linker scripts, clock, UART, interrupts, HAL configuration |
+| `drivers/` | ILI9488 display, touch, backlight, click-wheel, compatibility layer for Trezor's display API |
+| `ui/` | Input, menu, components and screens |
+| `wallet/` | Crypto test vectors, NORCOW storage, USB HID, wallet core, FSM, signing |
+| `security/` | Flash protection, MPU, PIN delay, tamper detection, security audit |
+| `phases/phaseN/` | Test program for each phase |
+| `trezor-integration/` | Files that **replace** Trezor legacy files (`protect.c`, `buttons.c`, `layout.c`...). Not built here; kept for integration with the Trezor tree |
+| `tools/` | OpenOCD config, gdbinit, `fetch_vendor.sh` |
+| `dist/` | Prebuilt binaries and SHA-256 checksums |
+| `docs/original-notes/` | Original Makefiles and notes, for reference |
 
-## Pendientes conocidos (no bloquean las pruebas)
+Source-code comments are mostly in Spanish, as in the original draft.
 
-- **VID:PID 1209:53C1 es el de Trezor.** Sirve para probar con `trezorctl`, pero hay que pedir un PID propio
-  en pid.codes antes de que salga cualquier unidad del taller.
-- **Click-wheel:** el driver es para el sensor magnético AS5600; la CiWi ya usa rueda capacitiva.
-- **Touch:** `touch_xpt2046.h` se reconstruyó porque faltaba; el pin IRQ (PC7) es un supuesto.
-- **TROPIC01:** aún no hay driver; el PIN se guarda con PBKDF2 en la flash del STM32.
-- **Anchor Protocol:** ninguna función del protocolo está implementada todavía (siguiente etapa).
-- **Licencia:** los archivos indican GPL v3, igual que `trezor-firmware`. trezor-crypto (`vendor/`) es MIT.
+## Known open items (they do not block testing)
+
+- **VID:PID 1209:53C1 belongs to Trezor.** It is convenient for testing with `trezorctl`, but a dedicated
+  PID must be requested from pid.codes before any unit leaves the workshop.
+- **Click-wheel:** the driver targets the AS5600 magnetic sensor; the CiWi now uses a capacitive wheel.
+- **Touch:** `touch_xpt2046.h` was reconstructed because it was missing; the IRQ pin (PC7) is an assumption.
+- **TROPIC01:** no driver yet; the PIN is stored with PBKDF2 in the STM32 flash.
+- **Anchor Protocol:** not implemented yet (next stage), see [walcorg/anchor-protocol](https://github.com/walcorg/anchor-protocol).
+- **License:** source files are GPL v3, like `trezor-firmware`. trezor-crypto (`vendor/`) is MIT.

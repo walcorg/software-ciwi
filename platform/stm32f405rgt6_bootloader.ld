@@ -44,9 +44,9 @@
 MEMORY
 {
     /* Flash: donde vive el código (read + execute) */
-    /* [v0.2] Layout CON bootloader: la app empieza en 0x08010000 (sector 4).
-     *        Solo arranca si hay un bootloader en 0x08000000 que salte aquí.
-     *        Requiere USER_VECT_TAB_ADDRESS + VECT_TAB_OFFSET=0x10000 (lo pone el Makefile). */
+    /* [v0.2] Layout WITH bootloader: the app starts at 0x08010000 (sector 4).
+     *        It only runs if a bootloader at 0x08000000 jumps here.
+     *        Requires USER_VECT_TAB_ADDRESS + VECT_TAB_OFFSET=0x10000 (set by the Makefile). */
     FLASH  (rx)  : ORIGIN = 0x08010000, LENGTH = 576K   /* Sectores 4–8  */
     STORAGE (r)  : ORIGIN = 0x080A0000, LENGTH = 384K   /* Sectores 9–11 */
 

@@ -24,7 +24,7 @@
 #include "bip39.h"
 #include "bip32.h"
 #include "curves.h"
-#include "secp256k1.h"   /* [v0.2] declara la curva secp256k1 */
+#include "secp256k1.h"   /* [v0.2] declares the secp256k1 curve */
 #include "ecdsa.h"
 #include "address.h"
 #include "segwit_addr.h"

@@ -1,17 +1,17 @@
 # =============================================================================
-# software-ciwi-v0.2 — Makefile
+# software-ciwi v0.2 — Makefile
 # Target: STM32F405RGT6 (WeAct Core Board / CiWi)
 #
-#   make                 → fase 1 (por defecto)
-#   make PHASE=1         → firmware de la fase 1 (build/phase1/ciwi-phase1.elf/.bin/.hex)
-#   make blink           → prueba mínima de LED (build/blink/ciwi-blink.*)
-#   make flash PHASE=1   → carga con OpenOCD + ST-Link
+#   make                 → phase 1 (default)
+#   make PHASE=1         → phase 1 firmware (build/phase1/ciwi-phase1.elf/.bin/.hex)
+#   make blink           → minimal LED test (build/blink/ciwi-blink.*)
+#   make flash PHASE=1   → flash with OpenOCD + ST-Link
 #   make flash-blink
 #   make size PHASE=1
 #   make clean
 #
-# Nota: en Make, "\" debe ser el ÚLTIMO carácter de la línea.
-#       Los comentarios van en su propia línea, nunca después de "\".
+# Note: in Make, "\" must be the LAST character on the line.
+#       Comments go on their own line, never after "\".
 # =============================================================================
 
 PHASE ?= 1
@@ -41,8 +41,8 @@ CFLAGS = $(MCU_FLAGS) $(DEFS) $(OPT) $(WARN) -g3 -std=gnu11 \
          -ffunction-sections -fdata-sections -fno-common \
          $(INCLUDES)
 
-# LAYOUT=standalone → firmware en 0x08000000 (tarjeta de desarrollo, sin bootloader)
-# LAYOUT=bootloader → firmware en 0x08010000 (requiere bootloader en 0x08000000)
+# LAYOUT=standalone → firmware at 0x08000000 (dev board, no bootloader)
+# LAYOUT=bootloader → firmware at 0x08010000 (requires a bootloader at 0x08000000)
 LAYOUT ?= standalone
 LDSCRIPT := platform/stm32f405rgt6_$(LAYOUT).ld
 ifeq ($(LAYOUT),bootloader)
@@ -81,7 +81,7 @@ WALLET_SRCS := wallet/crypto_validate.c wallet/storage_hal.c wallet/usb_hid.c wa
 SECURITY_SRCS := security/flash_protect.c security/mpu_hardening.c security/pin_delay.c \
                  security/security_audit.c security/tamper_detect.c
 
-# trezor-crypto (solo la biblioteca criptográfica, independiente del hardware)
+# trezor-crypto (crypto library only; hardware independent)
 TREZOR_CRYPTO := $(TREZOR_DIR)/crypto
 CRYPTO_SRCS := $(addprefix $(TREZOR_CRYPTO)/,bignum.c ecdsa.c curves.c secp256k1.c nist256p1.c \
                bip32.c bip39.c bip39_english.c sha2.c sha3.c ripemd160.c hmac.c pbkdf2.c \
@@ -138,7 +138,7 @@ all: check-vendor $(BUILD)/$(TARGET).elf $(BUILD)/$(TARGET).bin $(BUILD)/$(TARGE
 	@$(SIZE) $(BUILD)/$(TARGET).elf
 
 check-vendor:
-	@test -d $(HAL_DIR)/Src || (echo "Falta vendor/: ejecuta tools/fetch_vendor.sh" && false)
+	@test -d $(HAL_DIR)/Src || (echo "vendor/ missing: run tools/fetch_vendor.sh" && false)
 
 $(BUILD)/%.o: %.c
 	@mkdir -p $(dir $@)

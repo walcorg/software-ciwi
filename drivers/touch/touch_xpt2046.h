@@ -1,14 +1,14 @@
 /**
  * @file    touch_xpt2046.h
- * @brief   [v0.2] Header reconstruido para touch_xpt2046.c (faltaba en el zip original)
+ * @brief   [v0.2] Header reconstructed for touch_xpt2046.c (missing from the original draft)
  *
- * Reconstruido a partir de los símbolos que usa touch_xpt2046.c y display_test.c.
- * El XPT2046 comparte SPI1 con el ILI9488 (ver display_tft.h).
+ * Rebuilt from the symbols used by touch_xpt2046.c and display_test.c.
+ * The XPT2046 shares SPI1 with the ILI9488 (see display_tft.h).
  *
- * [VERIFICAR] TOUCH_IRQ: el pin no aparece en el código original; PC7 es un supuesto.
- * [VERIFICAR] Valores de calibración por defecto: típicos para un panel de 3.5".
- * [NOTA] La CiWi final usa rueda capacitiva, no touch resistivo; este driver
- *        solo sirve para probar el módulo de pantalla ILI9488 que trae XPT2046.
+ * [VERIFY] TOUCH_IRQ: the pin does not appear in the original code; PC7 is an assumption.
+ * [VERIFY] Default calibration values: typical for a 3.5" panel.
+ * [NOTE]   The final CiWi uses a capacitive wheel, not resistive touch; this driver
+ *          is only for testing the ILI9488 display module that ships with an XPT2046.
  *
  * @license GNU GPL v3
  */
@@ -20,27 +20,27 @@
 #include <stdint.h>
 #include "stm32f4xx_hal.h"
 
-/* ---------------------------------------------------------------- pines */
+/* ---------------------------------------------------------------- pins */
 #define TOUCH_CS_PORT        GPIOC
-#define TOUCH_CS_PIN         GPIO_PIN_6      /* T_CS = PC6 (según touch_xpt2046.c) */
+#define TOUCH_CS_PIN         GPIO_PIN_6      /* T_CS = PC6 (per touch_xpt2046.c) */
 #define TOUCH_IRQ_PORT       GPIOC
-#define TOUCH_IRQ_PIN        GPIO_PIN_7      /* [VERIFICAR] T_IRQ, activo en LOW */
+#define TOUCH_IRQ_PIN        GPIO_PIN_7      /* [VERIFY] T_IRQ, active LOW */
 
 #define TOUCH_CS_LOW()   HAL_GPIO_WritePin(TOUCH_CS_PORT, TOUCH_CS_PIN, GPIO_PIN_RESET)
 #define TOUCH_CS_HIGH()  HAL_GPIO_WritePin(TOUCH_CS_PORT, TOUCH_CS_PIN, GPIO_PIN_SET)
 
-/* ---------------------------------------------------------------- comandos XPT2046 */
-#define XPT2046_CMD_READ_X   0xD0   /* canal X, 12 bits, diferencial */
-#define XPT2046_CMD_READ_Y   0x90   /* canal Y */
-#define XPT2046_CMD_READ_Z1  0xB0   /* Z1 (presión) */
-#define XPT2046_CMD_READ_Z2  0xC0   /* Z2 (presión) */
+/* ---------------------------------------------------------------- XPT2046 commands */
+#define XPT2046_CMD_READ_X   0xD0   /* X channel, 12-bit, differential */
+#define XPT2046_CMD_READ_Y   0x90   /* Y channel */
+#define XPT2046_CMD_READ_Z1  0xB0   /* Z1 (pressure) */
+#define XPT2046_CMD_READ_Z2  0xC0   /* Z2 (pressure) */
 
-/* ---------------------------------------------------------------- parámetros */
-#define TOUCH_SAMPLES        7      /* lecturas por canal; se descartan máx y mín */
+/* ---------------------------------------------------------------- parameters */
+#define TOUCH_SAMPLES        7      /* samples per channel; max and min are discarded */
 #define TOUCH_DEBOUNCE_MS    30
 #define TOUCH_PRESSURE_MIN   100
 
-/* Calibración por defecto [VERIFICAR con touch_calibration()] */
+/* Default calibration [VERIFY with touch_calibration()] */
 #define TOUCH_CAL_X_MIN      200
 #define TOUCH_CAL_X_MAX      3900
 #define TOUCH_CAL_Y_MIN      200
@@ -49,11 +49,11 @@
 #define TOUCH_INVERT_Y       false
 #define TOUCH_SWAP_XY        false
 
-/* ---------------------------------------------------------------- tipos */
+/* ---------------------------------------------------------------- types */
 typedef struct {
-    int16_t  x;          /**< coordenada de pantalla */
+    int16_t  x;          /**< screen coordinate */
     int16_t  y;
-    uint16_t pressure;   /**< Z1 crudo */
+    uint16_t pressure;   /**< raw Z1 */
     bool     valid;
 } touch_point_t;
 

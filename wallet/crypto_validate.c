@@ -19,7 +19,7 @@
 #include "bip39.h"       /* mnemonic_generate(), mnemonic_to_seed() */
 #include "bip32.h"       /* hdnode_from_seed(), hdnode_private_ckd() */
 #include "curves.h"
-#include "secp256k1.h"   /* [v0.2] declara la curva secp256k1 */      /* SECP256K1_NAME                          */
+#include "secp256k1.h"   /* [v0.2] declares the secp256k1 curve */      /* SECP256K1_NAME                          */
 #include "ecdsa.h"       /* ecdsa_sign(), ecdsa_verify()            */
 #include "sha2.h"        /* sha256_Raw()                            */
 #include "base58.h"      /* base58_encode_check()                   */

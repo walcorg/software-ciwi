@@ -125,7 +125,7 @@
 #define  TICK_INT_PRIORITY   15U   /* Prioridad mínima para SysTick */
 #define  USE_RTOS            0U    /* Sin RTOS — bare-metal puro */
 
-/* [v0.2] Valores que exige el HAL de ST (tomados de stm32f4xx_hal_conf_template.h) */
+/* [v0.2] Values required by the ST HAL (from stm32f4xx_hal_conf_template.h) */
 #if !defined(LSI_VALUE)
   #define LSI_VALUE               32000U
 #endif
@@ -236,7 +236,7 @@
   #warning "HAL_ETH habilitado pero la WeAct board no tiene PHY Ethernet."
 #endif
 
-/* [v0.2] Macro de aserciones del HAL (faltaba: el HAL la usa en todos sus módulos) */
+/* [v0.2] HAL assertion macro (was missing; every HAL module uses it) */
 #ifdef USE_FULL_ASSERT
   #define assert_param(expr) ((expr) ? (void)0U : assert_failed((uint8_t *)__FILE__, __LINE__))
   void assert_failed(uint8_t *file, uint32_t line);

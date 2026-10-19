@@ -111,7 +111,7 @@ uint32_t clock_get_sysclk_hz(void);
  */
 void clock_print_status(void);
 
-/** [v0.2] Definido en platform/stm32_walcorg.c */
+/** [v0.2] Defined in platform/stm32_walcorg.c */
 void Error_Handler(void);
 
 #endif /* CLOCK_CONFIG_H */

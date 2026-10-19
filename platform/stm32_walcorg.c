@@ -237,7 +237,7 @@ void Error_Handler(void) {
     NVIC_SystemReset();
 #else
     /* En desarrollo: parpadeo rápido del LED para indicar error */
-    /* [v0.2] LED de la WeAct F405 en PB2 (PC13 es el botón KEY) */
+    /* [v0.2] WeAct F405 LED is on PB2 (PC13 is the KEY button) */
     __HAL_RCC_GPIOB_CLK_ENABLE();
     GPIOB->MODER   |=  (1 << (2 * 2));     /* PB2 como salida */
     GPIOB->MODER   &= ~(1 << (2 * 2 + 1));

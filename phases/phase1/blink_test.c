@@ -20,8 +20,8 @@
  *
  * HARDWARE:
  *   WeAct STM32F405RGT6 Mini Core Board
- *   [v0.2] LED de usuario en la WeAct F405: PB2 (PC13 es el botón KEY)
- *   La polaridad del LED no importa para el parpadeo (se alterna el pin)
+ *   [v0.2] WeAct F405 user LED: PB2 (PC13 is the KEY button)
+ *   [v0.2] LED polarity does not matter for blinking (the pin is toggled)
  *
  *
  * COMPILAR Y FLASHEAR:

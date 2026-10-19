@@ -44,9 +44,9 @@
 MEMORY
 {
     /* Flash: donde vive el código (read + execute) */
-    /* [v0.2] Layout STANDALONE para la tarjeta de desarrollo (sin bootloader):
-     *        el STM32 arranca leyendo la tabla de vectores en 0x08000000,
-     *        así que el firmware debe empezar ahí. Ocupa sectores 0–8. */
+    /* [v0.2] STANDALONE layout for the dev board (no bootloader):
+     *        the STM32 boots from the vector table at 0x08000000,
+     *        so the firmware must start there. Uses sectors 0-8. */
     FLASH  (rx)  : ORIGIN = 0x08000000, LENGTH = 640K   /* Sectores 0–8  */
     STORAGE (r)  : ORIGIN = 0x080A0000, LENGTH = 384K   /* Sectores 9–11 */
 

@@ -524,7 +524,7 @@ static void _handle_entropy_ack(const usb_message_t *msg) {
         uint8_t device_entropy[32];
         for (int i = 0; i < 8; i++) {
             uint32_t r = 0;
-            rng_get32(&r);   /* [v0.2] la API de rng_test.h se llama rng_get32() */
+            rng_get32(&r);   /* [v0.2] the rng_test.h API is rng_get32() */
             memcpy(device_entropy + i * 4, &r, 4);
         }
 

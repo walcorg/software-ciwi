@@ -51,7 +51,7 @@
 #include "clickwheel.h"
 
 /* =========================================================
- * DEFINICIÓN DEL LED — [v0.2] PB2 en WeAct F405 (PC13 es el botón KEY)
+ * DEFINICIÓN DEL LED — [v0.2] PB2 on the WeAct F405 (PC13 is the KEY button)
  * ========================================================= */
 #define LED_PORT        GPIOB
 #define LED_PIN         GPIO_PIN_2

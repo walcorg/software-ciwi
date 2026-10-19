@@ -142,7 +142,7 @@ static void _send_tx_request_finished(const uint8_t *sig, uint8_t pby) {
     if (sig) {
         /* Convertir firma r||s (64 bytes) a DER + SIGHASH_ALL */
         uint8_t der[73]; uint8_t der_len;
-        /* [v0.2] trezor-crypto actual: ecdsa_sig_to_der(sig, der) devuelve la longitud */
+        /* [v0.2] current trezor-crypto: ecdsa_sig_to_der(sig, der) returns the length */
         der_len = (uint8_t)ecdsa_sig_to_der(sig, der);
         der[der_len++] = 0x01; /* SIGHASH_ALL */
 

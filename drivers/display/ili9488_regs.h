@@ -243,7 +243,7 @@
 
 /** Macro de conversión RGB888 a RGB565 */
 #define RGB565(r, g, b) \
-    ((uint16_t)((((r) & 0xF8) << 8) | (((g) & 0xFC) << 3) | ((b) >> 3)))   /* [v0.2] argumentos entre paréntesis */
+    ((uint16_t)((((r) & 0xF8) << 8) | (((g) & 0xFC) << 3) | ((b) >> 3)))   /* [v0.2] arguments parenthesized */
 
 /* Colores básicos */
 #define ILI9488_BLACK       RGB565(  0,   0,   0)
@@ -267,7 +267,7 @@
 #define WALCORG_ERROR       RGB565(220,  50,  50)  /**< Rojo error */
 #define WALCORG_TEXT        RGB565(230, 230, 230)  /**< Texto principal */
 #define WALCORG_SUBTEXT     RGB565(150, 150, 150)  /**< Texto secundario */
-#define WALCORG_DARKGRAY    RGB565( 60,  60,  60)  /**< [v0.2] Gris oscuro (lo usa menu.c) */
+#define WALCORG_DARKGRAY    RGB565( 60,  60,  60)  /**< [v0.2] Dark gray (used by menu.c) */
 
 
 /* =========================================================
