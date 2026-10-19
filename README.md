@@ -1,17 +1,34 @@
 # software-ciwi
 
-Test firmware for the **CiWi** cold wallet (WALCORG) on the **WeAct STM32F405RGT6 Core Board**,
+Test firmware for the **CiWi** cold wallet (WALCORG) on an **STM32F405RGT6** board (WeAct STM32F4 64-pin Core Board architecture),
 based on a fork of the Trezor firmware. Version 0.2 adds no new features: it reorganizes the
 original draft so that it **builds and boots on the board**, and fixes the errors that prevented
 it. Full list of fixes: [`CHANGES.md`](CHANGES.md).
 
 All 6 phases and the LED test build with `arm-none-eabi-gcc 13.2`. Prebuilt binaries are in `dist/`.
 
+## Hardware path
+
+The CiWi board is designed in Autodesk Fusion using the **WeAct STM32F4 64-pin Core Board V1.1**
+as its reference design. Development follows three steps:
+
+1. **Test board (now):** an STM32F405RGT6 development board with the same core architecture as the
+   WeAct reference, plus an extra USB port that makes flashing easier. This firmware is tested here first.
+2. **Intermediate step:** a PCB that **keeps the WeAct core architecture unchanged** (STM32F405RGT6,
+   8 MHz HSE, LED on PB2, KEY on PC13, USB on PA11/PA12, SWD and UART headers) but already has the
+   **CiWi form factor**: outline, mounting holes, display header and the click-wheel opening.
+   Code that passes on the test board should run on it without pin changes.
+3. **CiWi main board:** the final design, adding the TROPIC01 secure element and the CiWi peripherals.
+
+| Test board | Intermediate step: WeAct architecture in the CiWi form factor |
+| --- | --- |
+| ![STM32F405RGT6 development board used for testing](docs/images/test-board-stm32f405.png) | ![PCB with the WeAct core architecture in the CiWi form factor](docs/images/ciwi-form-factor-pcb.png) |
+
 ## What you need
 
 | Item | Purpose |
 | --- | --- |
-| WeAct STM32F405RGT6 Core Board | 8 MHz HSE crystal, user LED on **PB2**, KEY button on PC13 |
+| STM32F405RGT6 test board (WeAct STM32F4 64-pin Core Board V1.1 architecture) | 8 MHz HSE crystal, user LED on **PB2**, KEY button on PC13 |
 | ST-Link V2 (or clone) | Flashing and debugging over SWD (DIO, CLK, GND, 3V3) |
 | 3.3 V USB-UART adapter | Test output: **PA9 (TX) → adapter RX**, common GND, 115200 8N1 |
 | USB-C cable | USB tests (phases 1 and 5) |
@@ -55,6 +72,9 @@ Do not move to the next phase until the current one passes.
 | 6 | `ciwi-phase6` | + display + USB-C | Full security audit report over UART. RDP is **not** applied automatically; do not enable it on the dev board |
 
 ### Pins
+
+Pin assignments follow the WeAct STM32F4 64-pin Core Board V1.1 schematic. If the LED does not blink
+on a different test board, check which pin its LED uses and adjust `LED_PIN` in `blink_test.c`.
 
 | Function | Pin |
 | --- | --- |
