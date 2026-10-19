@@ -1,0 +1,80 @@
+# =============================================================================
+# trezor_makefile.patch
+# Parche para legacy/Makefile.include del repositorio trezor-firmware
+# =============================================================================
+#
+# CONTEXTO:
+#   El Makefile de Trezor One (legacy/Makefile.include) tiene flags de
+#   compilación para el STM32F205 (Cortex-M3, sin FPU).
+#   Necesitamos cambiarlos para el STM32F405RGT6 (Cortex-M4 + FPU).
+#
+# APLICAR ESTE PARCHE:
+#   cd trezor-firmware/
+#   git apply scripts/trezor_makefile.patch
+#
+# O MANUALMENTE editar legacy/Makefile.include buscando las líneas
+# marcadas con [CAMBIAR] y reemplazando con las líneas [POR]:
+#
+# =============================================================================
+
+
+--- a/legacy/Makefile.include
++++ b/legacy/Makefile.include
+@@ -1,6 +1,6 @@
+ # Configuración del MCU objetivo
+-# [CAMBIAR] Flags originales para STM32F205 (Cortex-M3, sin FPU)
+-CPUFLAGS = -mcpu=cortex-m3 -mthumb
++# [POR] Flags para STM32F405RGT6 (Cortex-M4 con FPU)
++CPUFLAGS = -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard
+ 
+ # Definición del chip para el HAL de ST
+-# [CAMBIAR] Define original para STM32F205
+-CHIP_DEFINE = -DSTM32F205xx
++# [POR] Define para STM32F405
++CHIP_DEFINE = -DSTM32F405xx
+ 
+@@ -15,8 +15,8 @@
+ # Linker script
+-# [CAMBIAR] Linker script original de Trezor para STM32F205
+-LDFLAGS += -T vendor/libopencm3/lib/stm32/f2/stm32f2.ld
++# [POR] Nuestro linker script para STM32F405RGT6
++LDFLAGS += -T $(WALCORG_ROOT)/ld/stm32f405rgt6.ld
+ 
+@@ -25,8 +25,8 @@
+ # Archivo de startup
+-# [CAMBIAR] Startup para STM32F205 (Cortex-M3)
+-STARTUP = vendor/libopencm3/lib/stm32/f2/startup_stm32f205.s
++# [POR] Startup para STM32F405 (Cortex-M4)
++STARTUP = $(WALCORG_ROOT)/vendor/CMSIS/Device/ST/STM32F4xx/Source/startup_stm32f405xx.s
+ 
+@@ -35,9 +35,12 @@
+ # Optimización
+ # Sin cambios — mantener -Os para minimizar tamaño del firmware
+ OPTFLAGS = -Os
++
++# [NUEVO] Flags adicionales para Cortex-M4
++# -mfp16-format=ieee: soporte para half-precision float (no crítico pero útil)
++# -fomit-frame-pointer: reduce uso de stack en funciones (ya incluido en -Os)
++CPUFLAGS += -fomit-frame-pointer
+ 
+@@ -50,8 +53,8 @@
+ # stm32.c: inicialización del hardware (clock, MPU, periféricos)
+-# [CAMBIAR] El stm32.c original está escrito para STM32F205
+-SRC_FIRMWARE += firmware/stm32.c
++# [POR] Usar nuestra versión adaptada para STM32F405
++SRC_FIRMWARE += $(WALCORG_ROOT)/src/stm32_walcorg.c
++SRC_FIRMWARE += $(WALCORG_ROOT)/src/clock_config.c
++SRC_FIRMWARE += $(WALCORG_ROOT)/src/uart_debug.c
++SRC_FIRMWARE += $(WALCORG_ROOT)/src/stm32f4xx_it.c
+
+# =============================================================================
+# VERIFICACIÓN RÁPIDA
+# Después de aplicar el parche, ejecutar:
+#
+#   cd trezor-firmware/legacy
+#   make BITCOIN_ONLY=1 PRODUCTION=0
+#
+# Debería compilar sin errores.
+# Si hay errores de "undefined reference", revisar que todos los
+# archivos de walcorg_fw/src/ están incluidos en SRC_FIRMWARE.
+# =============================================================================

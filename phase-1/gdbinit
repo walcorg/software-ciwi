@@ -1,0 +1,298 @@
+# =============================================================================
+# .gdbinit — Configuración automática de GDB para WalCorg Cold Wallet
+# =============================================================================
+#
+# PROPÓSITO:
+#   GDB ejecuta este archivo automáticamente al iniciarse.
+#   Sin él, tendrías que escribir estos comandos manualmente
+#   en cada sesión de debug.
+#
+# USO:
+#   1. En una terminal: make openocd
+#      (inicia el servidor OpenOCD en background)
+#
+#   2. En otra terminal: arm-none-eabi-gdb build/walcorg.elf
+#      (GDB carga este .gdbinit automáticamente)
+#
+#   O en un solo paso:  make debug
+#
+# NOTA DE SEGURIDAD DE GDB:
+#   GDB >= 8.0 requiere que autorices los .gdbinit locales.
+#   Si GDB dice "auto-load refused", ejecutar una vez:
+#     echo "set auto-load safe-path /" >> ~/.gdbinit
+#   O agregar el directorio del proyecto a la lista segura:
+#     echo "set auto-load safe-path /ruta/al/proyecto" >> ~/.gdbinit
+#
+# COMANDOS ÚTILES UNA VEZ CONECTADO:
+#   continue / c     → continuar ejecución
+#   next / n         → siguiente línea (sin entrar a funciones)
+#   step / s         → siguiente línea (entrando a funciones)
+#   finish           → ejecutar hasta que la función actual retorne
+#   break función    → breakpoint en el inicio de una función
+#   break archivo:42 → breakpoint en línea 42 del archivo
+#   info registers   → ver todos los registros del CPU
+#   info breakpoints → ver breakpoints activos
+#   print var        → imprimir valor de variable
+#   x/10xw 0x20000000 → ver 10 palabras en hex desde dirección
+#   bt               → backtrace (stack de llamadas)
+#   quit / q         → salir
+# =============================================================================
+
+
+# -----------------------------------------------------------------------------
+# 1. CONFIGURACIÓN GENERAL DE GDB
+# -----------------------------------------------------------------------------
+
+# Suprimir el mensaje de confirmación al salir
+# Sin esto, GDB pregunta "Quit anyway? (y or n)" al cerrar
+set confirm off
+
+# Desactivar la paginación de salida (evita "---Type <return> to continue---")
+# En debug embebido la salida puede ser larga y la paginación es molesta
+set pagination off
+
+# Formato de números por defecto: hexadecimal
+# En sistemas embebidos casi siempre queremos ver direcciones y
+# registros en hex, no en decimal
+set output-radix 16
+
+# Habilitar colores en la salida de GDB (si el terminal los soporta)
+set style enabled on
+
+# Aumentar el historial de comandos
+set history size 1000
+set history save on
+set history filename ~/.gdb_walcorg_history
+
+# Número de elementos a mostrar al imprimir arrays
+set print elements 64
+
+# Mostrar arrays de caracteres como strings
+set print null-stop on
+
+
+# -----------------------------------------------------------------------------
+# 2. CONECTAR A OPENOCD
+#
+# OpenOCD debe estar corriendo en otra terminal (make openocd).
+# GDB se conecta al servidor de debug de OpenOCD en el puerto 3333.
+#
+# El protocolo es "Remote Serial Protocol" (RSP) de GDB.
+# OpenOCD actúa como stub RSP que traduce los comandos de GDB
+# a acciones sobre el ST-Link V2 y el chip.
+# -----------------------------------------------------------------------------
+echo \n[gdbinit] Conectando a OpenOCD en localhost:3333...\n
+
+target extended-remote :3333
+# "extended-remote" en vez de "remote" permite reconectar si el chip
+# se resetea, sin necesidad de salir y volver a entrar a GDB.
+
+echo [gdbinit] Conectado al STM32F405RGT6\n
+
+
+# -----------------------------------------------------------------------------
+# 3. CARGAR EL FIRMWARE
+#
+# "load" flashea el archivo ELF al chip a través de OpenOCD.
+# Esto es equivalente a "make flash" pero desde dentro de GDB,
+# lo que permite inmediatamente poner breakpoints y debuggear.
+#
+# Si el archivo ya estaba flasheado y no cambió, "load" lo detecta
+# y solo actualiza las partes que cambiaron.
+# -----------------------------------------------------------------------------
+echo [gdbinit] Cargando firmware al chip...\n
+load
+echo [gdbinit] Firmware cargado\n
+
+
+# -----------------------------------------------------------------------------
+# 4. RESETEAR EL CHIP
+#
+# Después de cargar, el chip está en un estado indeterminado.
+# "monitor reset halt" le dice a OpenOCD que:
+#   - Aplique un reset de sistema (via el pin NRST o por software)
+#   - Detenga el CPU ANTES de que ejecute la primera instrucción
+#
+# "monitor" envía el comando directamente a OpenOCD, no a GDB.
+# Esto es necesario para comandos específicos del hardware.
+# -----------------------------------------------------------------------------
+echo [gdbinit] Reseteando chip y deteniendo en el inicio...\n
+monitor reset halt
+
+
+# -----------------------------------------------------------------------------
+# 5. BREAKPOINTS AUTOMÁTICOS
+#
+# Estos breakpoints se activan automáticamente en cada sesión.
+# GDB se detendrá aquí automáticamente sin que escribas nada.
+# -----------------------------------------------------------------------------
+
+# Breakpoint en main() — detenerse justo antes de que empiece el firmware
+# Útil para inspeccionar el estado inicial antes de cualquier inicialización
+break main
+echo [gdbinit] Breakpoint en main()\n
+
+# Breakpoint en Error_Handler — detenerse si algo falla durante el init
+# Sin este breakpoint, un fallo de init causaría que el LED parpadeara
+# rápido sin ninguna indicación de dónde falló
+break Error_Handler
+echo [gdbinit] Breakpoint en Error_Handler()\n
+
+# Breakpoint en HardFault_handler_c — la función C que analiza el HardFault
+# Cuando el CPU tiene un fallo grave, GDB se detendrá aquí y podrás
+# ver el stack frame completo con "print *frame"
+break hard_fault_handler_c
+echo [gdbinit] Breakpoint en hard_fault_handler_c()\n
+
+# Breakpoint en Default_Handler — interrupción no manejada
+# Si una IRQ no implementada se dispara, GDB se detendrá aquí
+# y podrás ver en IPSR qué interrupción fue
+break Default_Handler
+echo [gdbinit] Breakpoint en Default_Handler()\n
+
+
+# -----------------------------------------------------------------------------
+# 6. COMANDOS PERSONALIZADOS (macros de GDB)
+#
+# Definimos comandos personalizados que puedes usar en la sesión
+# de debug para tareas comunes del proyecto.
+# -----------------------------------------------------------------------------
+
+# "walcorg_regs" — mostrar los registros más útiles para debug del STM32
+define walcorg_regs
+    echo \n=== Registros principales ===\n
+    info registers r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 sp lr pc xpsr
+    echo \n=== Control del sistema ===\n
+    # SCB->CFSR: estado de faults (MemManage, BusFault, UsageFault)
+    x/1xw 0xE000ED28
+    echo CFSR (fault status)\n
+    # SCB->HFSR: estado del HardFault
+    x/1xw 0xE000ED2C
+    echo HFSR (hardfault status)\n
+end
+document walcorg_regs
+Muestra los registros del CPU y los registros de estado de fault del STM32F405.
+Útil cuando el CPU está detenido por un HardFault o excepción.
+end
+
+
+# "walcorg_clock" — verificar el estado del clock en tiempo real
+define walcorg_clock
+    echo \n=== Registros de Clock (RCC) ===\n
+    # RCC->CR: control del oscilador
+    x/1xw 0x40023800
+    echo RCC_CR (HSION, HSIRDY, HSEON, HSERDY, PLLON, PLLRDY)\n
+    # RCC->CFGR: configuración del clock
+    x/1xw 0x40023808
+    echo RCC_CFGR (SWS bits 3:2 = 10 si PLL activo)\n
+    # RCC->PLLCFGR: configuración del PLL
+    x/1xw 0x40023804
+    echo RCC_PLLCFGR (PLLM, PLLN, PLLP, PLLQ)\n
+end
+document walcorg_clock
+Muestra los registros de clock del STM32F405.
+SWS = 10 (bits 3:2 de RCC_CFGR) confirma que el PLL está activo como fuente.
+end
+
+
+# "walcorg_rng_status" — verificar el estado del RNG hardware
+define walcorg_rng_status
+    echo \n=== Hardware RNG Status ===\n
+    # RNG->SR: Status Register
+    # Bit 0 = DRDY (Data Ready)
+    # Bit 2 = CECS (Clock Error Current Status)
+    # Bit 3 = SECS (Seed Error Current Status)
+    x/1xw 0x50060804
+    echo RNG_SR (bit0=DRDY, bit2=CECS, bit3=SECS)\n
+    # RNG->DR: Data Register (último número generado)
+    x/1xw 0x50060808
+    echo RNG_DR (ultimo numero aleatorio)\n
+    # RNG->CR: Control Register
+    x/1xw 0x50060800
+    echo RNG_CR (bit2=RNGEN debe ser 1)\n
+end
+document walcorg_rng_status
+Muestra el estado del hardware RNG del STM32F405.
+RNGEN=1 confirma que el RNG está habilitado.
+DRDY=1 indica que hay un número disponible para leer.
+end
+
+
+# "walcorg_usb_status" — verificar el estado del USB OTG FS
+define walcorg_usb_status
+    echo \n=== USB OTG FS Status ===\n
+    # OTG_FS_GINTSTS: Interrupt Status Register
+    x/1xw 0x50000014
+    echo OTG_FS_GINTSTS (interrupciones pendientes)\n
+    # OTG_FS_DSTS: Device Status Register
+    x/1xw 0x50000808
+    echo OTG_FS_DSTS (velocidad conectada, suspendido)\n
+end
+document walcorg_usb_status
+Muestra el estado del controlador USB OTG FS del STM32F405.
+end
+
+
+# "walcorg_stack" — mostrar el contenido actual del stack
+define walcorg_stack
+    echo \n=== Stack (últimas 16 palabras) ===\n
+    x/16xw $sp
+end
+document walcorg_stack
+Muestra las últimas 16 palabras del stack.
+Útil para detectar stack overflow o corrupción.
+end
+
+
+# "walcorg_flash_info" — mostrar información de la Flash
+define walcorg_flash_info
+    echo \n=== Flash Status ===\n
+    # FLASH->SR: Status Register
+    x/1xw 0x40023C0C
+    echo FLASH_SR (BSY, EOP, WRPERR, PGAERR)\n
+    # FLASH->CR: Control Register
+    x/1xw 0x40023C10
+    echo FLASH_CR (PG, SER, MER, STRT, LOCK)\n
+    # FLASH->OPTCR: Option Control Register (RDP level)
+    x/1xw 0x40023C14
+    echo FLASH_OPTCR (RDP: 0xAA=Level0, 0x00=Level1, 0xCC=Level2)\n
+end
+document walcorg_flash_info
+Muestra el estado de la Flash del STM32F405.
+RDP=0xAA = sin protección (desarrollo).
+RDP=0x00 = protección Level 1 (producción).
+end
+
+
+# -----------------------------------------------------------------------------
+# 7. CONFIGURACIÓN DEL DISASSEMBLER
+#
+# Mostrar instrucciones Thumb-2 correctamente en GDB
+# -----------------------------------------------------------------------------
+
+# Usar el disassembler de ARM con soporte Thumb-2
+set arm fallback-mode thumb
+
+# Mostrar instrucciones en formato Intel (más legible que AT&T para ARM)
+# (En ARM no hay diferencia significativa, pero por consistencia)
+set disassembly-flavor att
+
+
+# -----------------------------------------------------------------------------
+# 8. INICIAR LA EJECUCIÓN
+#
+# Ejecutar hasta el primer breakpoint (main()).
+# "continue" le dice al CPU que empiece a ejecutar desde
+# donde está detenido (inicio del Reset_Handler después del reset halt).
+# Se detendrá en el breakpoint de main() que definimos arriba.
+# -----------------------------------------------------------------------------
+echo \n[gdbinit] Iniciando ejecución hasta main()...\n
+echo [gdbinit] Comandos disponibles: walcorg_regs, walcorg_clock, walcorg_rng_status\n
+echo [gdbinit] Comandos disponibles: walcorg_usb_status, walcorg_stack, walcorg_flash_info\n\n
+
+continue
+
+# =============================================================================
+# FIN DE .gdbinit
+# El cursor de GDB queda disponible en el breakpoint de main()
+# =============================================================================
