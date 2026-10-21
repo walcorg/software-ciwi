@@ -10,7 +10,8 @@ All 6 phases and the LED test build with `arm-none-eabi-gcc 13.2`. Prebuilt bina
 ## Hardware path
 
 The CiWi board is designed in Autodesk Fusion using the **WeAct STM32F4 64-pin Core Board V1.1**
-as its reference design. Development follows three steps:
+as its reference design ([schematic](docs/hardware/WeAct-STM32F4_64PIN-CoreBoard_V11_Schematic.pdf),
+© WeAct Studio, included for reference). Development follows three steps:
 
 1. **Test board (now):** an STM32F405RGT6 development board with the same core architecture as the
    WeAct reference, plus an extra USB port that makes flashing easier. This firmware is tested here first.
@@ -73,7 +74,7 @@ Do not move to the next phase until the current one passes.
 
 ### Pins
 
-Pin assignments follow the WeAct STM32F4 64-pin Core Board V1.1 schematic. If the LED does not blink
+Pin assignments follow the [WeAct STM32F4 64-pin Core Board V1.1 schematic](docs/hardware/WeAct-STM32F4_64PIN-CoreBoard_V11_Schematic.pdf). If the LED does not blink
 on a different test board, check which pin its LED uses and adjust `LED_PIN` in `blink_test.c`.
 
 | Function | Pin |
@@ -98,6 +99,7 @@ on a different test board, check which pin its LED uses and adjust `LED_PIN` in 
 | `trezor-integration/` | Files that **replace** Trezor legacy files (`protect.c`, `buttons.c`, `layout.c`...). Not built here; kept for integration with the Trezor tree |
 | `tools/` | OpenOCD config, gdbinit, `fetch_vendor.sh` |
 | `dist/` | Prebuilt binaries and SHA-256 checksums |
+| `docs/hardware/` | Reference schematic of the WeAct STM32F4 64-pin Core Board V1.1 (© WeAct Studio) |
 | `docs/original-notes/` | Original Makefiles and notes, for reference |
 
 Source-code comments are mostly in Spanish, as in the original draft.
