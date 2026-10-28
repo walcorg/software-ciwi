@@ -49,7 +49,7 @@ ciwi_host: $(CIWI_SRCS) $(LT_SRCS) $(TC_SRCS) $(wildcard $(ROOT)/tropic/*.h $(RO
 
 test: ciwi_host
 	@rm -f ciwi-keystore.bin vectors.json
-	@$(MODEL) tcp -c $(MODEL_CFG) > model.log 2>&1 & echo $$! > model.pid; sleep 2
+	@$(MODEL) tcp -c $(MODEL_CFG) > model.log 2>&1 & echo $$! > model.pid; sleep 4
 	@./ciwi_host vectors.json; status=$$?; kill `cat model.pid`; rm -f model.pid; \
 	 test $$status -eq 0 && node verify.js vectors.json
 

@@ -1,3 +1,25 @@
+# Changes from v0.3 to v0.4
+
+## New: phase 8, the CiWi interface
+
+Implements the interface specification (portrait, click-wheel, hold to sign, optional touch).
+
+| Area | Files | What it does |
+| --- | --- | --- |
+| Input events | `ciwi_ui/ui_input.{c,h}` | ROTATE, SELECT, HOLD_PROGRESS / HOLD_DONE / HOLD_CANCEL (2 s), BACK, HOME (MENU 2 s), TOUCH_TAP, TOUCH_DRAG; every event carries its source |
+| Screens | `ciwi_ui/ui_app.{c,h}` | Home, Anchor menu, Settings, lock and auto-lock, PIN (digit wheel with random start, shuffled keypad with touch), signing confirmation in pages, messages |
+| Signing rule | `ui_run_confirm()` | Approve only with the physical centre button held 2 s on the last page; touch and emulated input can read and reject; invalid shield data can only be rejected; auto-lock rejects |
+| Drawing | `ciwi_ui/ui_gfx.{c,h}`, `ciwi_ui/ui_gfx_tft.c` | Zones, rounded boxes, rings, UTF-8 text with Spanish characters; two-function backend (ILI9488 or framebuffer) |
+| Languages | `ciwi_ui/ui_strings.{c,h}` | Spanish and English, switchable in Settings |
+| Phase 8 | `phases/phase8/` | KEY = centre button, UART keys for wheel and MENU, XPT2046 touch rotated to portrait, settings in NORCOW, TROPIC01 PIN, Anchor self-test with the confirmation screens, DEMO mode without TROPIC01 |
+| Tests | `tests/ui/` | The interface on a PC with scripted input: 16 checks and screenshots |
+
+## Other
+
+- `drivers/display/font5x7.c`: the font table moved out of `font.c` (no hardware dependency), so
+  the interface tests can use it.
+- `tests/host/Makefile`: waits 4 s for the TROPIC01 model to start.
+
 # Changes from v0.2 to v0.3
 
 Every change in existing files is marked `[v0.3]` in the source code.

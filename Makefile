@@ -1,10 +1,11 @@
 # =============================================================================
-# software-ciwi v0.3 — Makefile
+# software-ciwi v0.4 — Makefile
 # Target: STM32F405RGT6 (WeAct Core Board / CiWi)
 #
 #   make                 → phase 1 (default)
 #   make PHASE=1         → phase 1 firmware (build/phase1/ciwi-phase1.elf/.bin/.hex)
 #   make PHASE=7         → phase 7: TROPIC01 secure element + Anchor Protocol
+#   make PHASE=8         → phase 8: the CiWi interface (portrait, wheel, hold to sign)
 #   make blink           → minimal LED test (build/blink/ciwi-blink.*)
 #   make flash PHASE=1   → flash with OpenOCD + ST-Link
 #   make flash-blink
@@ -78,7 +79,7 @@ PHASE_SRCS := phases/phase1/main_phase1.c phases/phase1/rng_test.c \
               phases/phase1/usb_test.c drivers/clickwheel/clickwheel.c
 endif
 
-DISPLAY_SRCS := drivers/display/display_tft.c drivers/display/font.c drivers/touch/touch_xpt2046.c
+DISPLAY_SRCS := drivers/display/display_tft.c drivers/display/font.c drivers/display/font5x7.c drivers/touch/touch_xpt2046.c
 UI_INPUT_SRCS := ui/input_manager.c ui/menu.c drivers/clickwheel/clickwheel.c
 UI_SRCS := ui/ui_components.c ui/ui_screens.c ui/ui_animations.c drivers/backlight/backlight.c
 WALLET_SRCS := wallet/crypto_validate.c wallet/storage_hal.c wallet/usb_hid.c wallet/wallet_core.c \
@@ -147,6 +148,20 @@ DEFS += $(LT_DEFS)
 PHASE_DIRS := phases/phase7 tropic anchor $(TREZOR_CRYPTO) $(TREZOR_CRYPTO)/aes \
               $(LT_DIR)/include $(LT_DIR)/src $(LT_DIR)/cal/trezor_crypto $(LT_DIR)/hal/stm32/stm32f4xx
 PHASE_SRCS := phases/phase7/main_phase7.c phases/phase1/rng_test.c wallet/storage_hal.c wallet/trezor_rand_hw.c \
+              $(TROPIC_SRCS) $(LT_SRCS) $(CRYPTO_SRCS) \
+              $(TREZOR_CRYPTO)/aes/aesgcm.c $(TREZOR_CRYPTO)/aes/gf128mul.c
+endif
+
+# ---------------------------------------------------------------- phase 8: the CiWi interface
+CIWI_UI_SRCS := ciwi_ui/ui_app.c ciwi_ui/ui_gfx.c ciwi_ui/ui_input.c ciwi_ui/ui_strings.c \
+                ciwi_ui/ui_gfx_tft.c
+ifeq ($(PHASE),8)
+DEFS += $(LT_DEFS)
+PHASE_DIRS := phases/phase8 ciwi_ui tropic anchor $(TREZOR_CRYPTO) $(TREZOR_CRYPTO)/aes \
+              $(LT_DIR)/include $(LT_DIR)/src $(LT_DIR)/cal/trezor_crypto $(LT_DIR)/hal/stm32/stm32f4xx
+PHASE_SRCS := phases/phase8/main_phase8.c phases/phase8/ui_platform_stm32.c phases/phase1/rng_test.c \
+              wallet/storage_hal.c wallet/trezor_rand_hw.c $(CIWI_UI_SRCS) \
+              $(DISPLAY_SRCS) drivers/backlight/backlight.c \
               $(TROPIC_SRCS) $(LT_SRCS) $(CRYPTO_SRCS) \
               $(TREZOR_CRYPTO)/aes/aesgcm.c $(TREZOR_CRYPTO)/aes/gf128mul.c
 endif
