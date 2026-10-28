@@ -1,6 +1,6 @@
 /**
  * @file    stm32f4xx_hal_conf.h
- * @brief   Configuración del HAL de ST — WalCorg Cold Wallet
+ * @brief   Configuración del HAL de ST — WALCORG Cold Wallet
  *
  * Este archivo controla qué módulos del HAL se compilan.
  * Cada módulo habilitado suma código a la Flash.

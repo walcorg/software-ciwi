@@ -1,6 +1,6 @@
 /**
  * @file    layout_phase4.c  → reemplaza layout.c de Fase 2
- * @brief   Capa de presentación extendida — WalCorg Fase 4
+ * @brief   Capa de presentación extendida — WALCORG Fase 4
  *
  * CAMBIOS RESPECTO A FASE 2 (layout.c):
  *
@@ -78,7 +78,7 @@ static void _transition_back(void) {
  *
  * [MOD-L6] En Fase 2 dibujaba directamente con oledXxx.
  * En Fase 4 delega a screen_home() de ui_screens.c,
- * que usa los componentes completos del tema WalCorg.
+ * que usa los componentes completos del tema WALCORG.
  */
 void layoutHome(void) {
     _notify_activity();
@@ -96,13 +96,13 @@ void layoutHome(void) {
     /* Dibujar la pantalla de inicio — no bloqueante en este contexto.
      * fsm.c llama layoutHome() y luego entra en su loop de eventos. */
     tft_clear(THEME_BG);
-    ui_topbar("WalCorg Wallet", 'B', THEME_PRIMARY_DIM);
+    ui_topbar("WALCORG Wallet", 'B', THEME_PRIMARY_DIM);
 
     /* Logo / estado central */
     tft_fill_circle(tft_get_width() / 2, 130, 45, THEME_PRIMARY_DIM);
     tft_draw_string_centered(112, "B", THEME_BITCOIN, THEME_PRIMARY_DIM, 3);
 
-    tft_draw_string_centered(195, "WalCorg Cold Wallet",
+    tft_draw_string_centered(195, "WALCORG Cold Wallet",
                              THEME_TEXT_PRIMARY, THEME_BG, 2);
     tft_draw_string_centered(218, "Conecta al USB o gira el wheel",
                              THEME_TEXT_SECONDARY, THEME_BG, 1);

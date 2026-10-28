@@ -1,6 +1,6 @@
 /**
  * @file    touch_xpt2046.c
- * @brief   Driver touch resistivo XPT2046 via SPI1 — WalCorg Fase 2
+ * @brief   Driver touch resistivo XPT2046 via SPI1 — WALCORG Fase 2
  *
  * El XPT2046 comparte SPI1 con el ILI9488 pero usa T_CS=PC6
  * y requiere velocidad SPI más baja (max 2MHz vs 10.5MHz del display).

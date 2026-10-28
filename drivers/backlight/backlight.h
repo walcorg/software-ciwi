@@ -1,6 +1,6 @@
 /**
  * @file    backlight.h / backlight.c
- * @brief   Control de brillo del display via PWM — WalCorg Fase 4
+ * @brief   Control de brillo del display via PWM — WALCORG Fase 4
  *
  * Controla el backlight del TFT via TIM3_CH4 en PB1.
  *

@@ -9,7 +9,7 @@
  *
  * DIFERENCIAS RESPECTO AL ORIGINAL DE TREZOR:
  *
- *   | Aspecto            | Trezor One (F205)  | WalCorg (F405)     |
+ *   | Aspecto            | Trezor One (F205)  | WALCORG (F405)     |
  *   |--------------------|--------------------|--------------------|
  *   | MCU                | STM32F205RET6      | STM32F405RGT6      |
  *   | Núcleo             | Cortex-M3          | Cortex-M4 + FPU    |
@@ -150,13 +150,43 @@ static void mpu_config_minimal(void) {
     mpu_region.IsBufferable     = MPU_ACCESS_BUFFERABLE;
     HAL_MPU_ConfigRegion(&mpu_region);
 
+    /* -----------------------------------------------------------------
+     * [v0.3] Region 4: NORCOW storage (sectors 9-11), read/write, never executable.
+     * Region 0 makes all flash read-only, and flash programming is a CPU store to the target
+     * address, so without this region every storage write (PIN in phase 5, TROPIC01 pairing key
+     * in phase 7) raised a MemManage fault. 512 KB at 0x08080000 with subregions 0-1 disabled:
+     * sector 8 (0x08080000-0x0809FFFF) still holds code and keeps region 0's attributes.
+     * ----------------------------------------------------------------- */
+    mpu_region.Number           = MPU_REGION_NUMBER4;
+    mpu_region.BaseAddress      = 0x08080000;
+    mpu_region.Size             = MPU_REGION_SIZE_512KB;
+    mpu_region.SubRegionDisable = 0x03;
+    mpu_region.AccessPermission = MPU_REGION_FULL_ACCESS;
+    mpu_region.DisableExec      = MPU_INSTRUCTION_ACCESS_DISABLE;
+    mpu_region.IsCacheable      = MPU_ACCESS_NOT_CACHEABLE;
+    mpu_region.IsBufferable     = MPU_ACCESS_NOT_BUFFERABLE;
+    HAL_MPU_ConfigRegion(&mpu_region);
+
+    /* -----------------------------------------------------------------
+     * [v0.3] Region 5: system memory, OTP and the 96-bit unique ID (0x1FFF7A10), read-only.
+     * The MPU runs without a background map (MPU_HFNMI_PRIVDEF_NONE), so reading the UID
+     * faulted before. Phase 7 binds the PIN to the UID.
+     * ----------------------------------------------------------------- */
+    mpu_region.Number           = MPU_REGION_NUMBER5;
+    mpu_region.BaseAddress      = 0x1FFF0000;
+    mpu_region.Size             = MPU_REGION_SIZE_64KB;
+    mpu_region.SubRegionDisable = 0x00;
+    mpu_region.AccessPermission = MPU_REGION_PRIV_RO;
+    mpu_region.DisableExec      = MPU_INSTRUCTION_ACCESS_DISABLE;
+    HAL_MPU_ConfigRegion(&mpu_region);
+
     /* Habilitar MPU con comportamiento de fallo en accesos desde NMI/HardFault:
      * HFNMI_PRIVDEF_NONE = deshabilitar MPU en NMI y HardFault handlers
      * Esto permite que los fault handlers accedan a toda la memoria
      * para imprimir el diagnóstico por UART */
     HAL_MPU_Enable(MPU_HFNMI_PRIVDEF_NONE);
 
-    DEBUG_PRINT("[STM32] MPU configurada (4 regiones)\r\n");
+    DEBUG_PRINT("[STM32] MPU configurada (6 regiones)\r\n");
 }
 
 
@@ -168,7 +198,7 @@ static void mpu_config_minimal(void) {
  * ========================================================= */
 
 /**
- * stm32_init — Inicialización completa del hardware del WalCorg
+ * stm32_init — Inicialización completa del hardware del WALCORG
  *
  * Orden de inicialización (CRÍTICO — no cambiar el orden):
  *   1. FPU         → antes de cualquier operación float
@@ -202,7 +232,7 @@ void stm32_init(void) {
     /* Inicializar UART debug — a partir de aquí podemos usar DEBUG_PRINT */
     debug_uart_init();
 
-    DEBUG_PRINT("\r\n[STM32] WalCorg F405 iniciando...\r\n");
+    DEBUG_PRINT("\r\n[STM32] WALCORG F405 iniciando...\r\n");
     DEBUG_PRINTF("[STM32] HAL version: %lu\r\n", HAL_GetHalVersion());
     DEBUG_PRINTF("[STM32] SYSCLK: %lu MHz\r\n",
         HAL_RCC_GetSysClockFreq() / 1000000);

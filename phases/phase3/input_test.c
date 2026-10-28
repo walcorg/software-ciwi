@@ -1,6 +1,6 @@
 /**
  * @file    input_test.c
- * @brief   Tests interactivos del click-wheel — WalCorg Fase 3
+ * @brief   Tests interactivos del click-wheel — WALCORG Fase 3
  *
  * Cada test es interactivo — requiere que el usuario opere
  * el click-wheel. Los resultados se muestran en el TFT
@@ -245,7 +245,7 @@ void input_test_main_menu(void) {
     };
 
     menu_t menu;
-    menu_init(&menu, "WalCorg — Test 2", items, 5);
+    menu_init(&menu, "WALCORG — Test 2", items, 5);
 
     bool items_selected[5] = {false};
     int  select_count = 0;
@@ -629,7 +629,7 @@ bool input_run_all_tests(void) {
     /* Pantalla de bienvenida */
     tft_clear(WALCORG_BG);
     tft_fill_rect(0, 0, tft_get_width(), 36, WALCORG_PRIMARY);
-    tft_draw_string_centered(10, "WalCorg — Fase 3",
+    tft_draw_string_centered(10, "WALCORG — Fase 3",
                               ILI9488_WHITE, WALCORG_PRIMARY, 2);
     tft_draw_string_centered(60,  "Tests del click-wheel",
                               WALCORG_TEXT, WALCORG_BG, 2);
@@ -662,7 +662,7 @@ bool input_run_all_tests(void) {
                               WALCORG_TEXT, WALCORG_BG, 1);
     tft_draw_string_centered(160, "Listo para Fase 4",
                               WALCORG_SUBTEXT, WALCORG_BG, 1);
-    tft_draw_string_centered(175, "(UI personalizada WalCorg)",
+    tft_draw_string_centered(175, "(UI personalizada WALCORG)",
                               WALCORG_SUBTEXT, WALCORG_BG, 1);
 
     DEBUG_PRINT("[TESTS] === Suite Fase 3 completada ===\r\n\r\n");

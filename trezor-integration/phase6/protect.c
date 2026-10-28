@@ -1,6 +1,6 @@
 /**
  * @file    protect.c  (legacy/firmware/protect.c — versión MODIFICADA)
- * @brief   Protección de PIN con cuadrícula aleatoria — WalCorg Fase 3
+ * @brief   Protección de PIN con cuadrícula aleatoria — WALCORG Fase 3
  *
  * ARCHIVO ORIGINAL: legacy/firmware/protect.c del repo trezor-firmware
  *

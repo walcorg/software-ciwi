@@ -1,6 +1,6 @@
 /**
  * @file    security_audit.h
- * @brief   Auditoría automatizada de seguridad — WalCorg Fase 6
+ * @brief   Auditoría automatizada de seguridad — WALCORG Fase 6
  *
  * Checklist ejecutable que verifica TODAS las protecciones de
  * seguridad antes de considerar el firmware listo para producción.

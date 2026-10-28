@@ -1,6 +1,6 @@
 /**
  * @file    storage_hal.h
- * @brief   HAL de almacenamiento seguro NORCOW — WalCorg Fase 5
+ * @brief   HAL de almacenamiento seguro NORCOW — WALCORG Fase 5
  *
  * NORCOW (NOR flash Copy-On-Write) es el sistema de almacenamiento
  * de clave-valor de Trezor. Guarda en Flash:
@@ -11,7 +11,7 @@
  *
  * LAYOUT DE FLASH STM32F405RGT6:
  *   Sector 0-3  (4×16KB = 64KB)  → Bootloader
- *   Sector 4-8  (576KB)          → Firmware WalCorg
+ *   Sector 4-8  (576KB)          → Firmware WALCORG
  *   Sector 9    (128KB) 0x080A0000 → NORCOW bloque A
  *   Sector 10   (128KB) 0x08080000 → NORCOW bloque B
  *   Sector 11   (128KB) 0x080C0000 → NORCOW bloque C (backup)
@@ -70,6 +70,7 @@
 
 /** App ID para datos del wallet */
 #define STORAGE_APP_WALLET      0x01
+#define STORAGE_APP_TROPIC      0x02  /**< [v0.3] TROPIC01 host pairing key */
 
 /** Claves dentro del app wallet */
 #define STORAGE_KEY_PIN_HASH    0x01  /**< Hash PBKDF2 del PIN         */
@@ -241,5 +242,10 @@ bool storage_set_label(const char *label);
  * Solo disponible con PRODUCTION=0.
  */
 void storage_print_status(void);
+
+/** [v0.3] Generic NORCOW access (any app except STORAGE_APP_WALLET). */
+bool storage_put(uint8_t app_id, uint8_t key, const uint8_t *data, uint16_t len);
+bool storage_get(uint8_t app_id, uint8_t key, uint8_t *out, uint16_t max_len,
+                 uint16_t *out_len);
 
 #endif /* STORAGE_HAL_H */

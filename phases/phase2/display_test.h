@@ -1,6 +1,6 @@
 /**
  * @file    display_test.h
- * @brief   Tests visuales del display TFT — WalCorg Fase 2
+ * @brief   Tests visuales del display TFT — WALCORG Fase 2
  *
  * Suite de pruebas visuales para verificar que el driver
  * display_tft.c funciona correctamente. Cada test verifica

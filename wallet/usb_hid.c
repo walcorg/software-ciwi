@@ -1,6 +1,6 @@
 /**
  * @file    usb_hid.c
- * @brief   Stack USB HID — WalCorg Fase 5
+ * @brief   Stack USB HID — WALCORG Fase 5
  *
  * Implementa el protocolo de comunicación USB de Trezor:
  * mensajes protobuf fragmentados en chunks HID de 64 bytes.

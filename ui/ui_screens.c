@@ -1,6 +1,6 @@
 /**
  * @file    ui_screens.c
- * @brief   Pantallas completas del wallet — WalCorg Fase 4
+ * @brief   Pantallas completas del wallet — WALCORG Fase 4
  *
  * Cada función dibuja una pantalla completa y maneja la
  * interacción con el usuario via input_manager hasta que
@@ -32,7 +32,7 @@
  *
  * Diseño:
  *   ┌─────────────────────────────┐
- *   │  [B]  WalCorg Cold Wallet   │  ← topbar con logo Bitcoin
+ *   │  [B]  WALCORG Cold Wallet   │  ← topbar con logo Bitcoin
  *   ├─────────────────────────────┤
  *   │ ▸ Recibir Bitcoin           │  ← ítem seleccionado
  *   │   Enviar Bitcoin            │
@@ -68,7 +68,7 @@ int screen_home(void) {
     };
 
     menu_t home_menu;
-    menu_init(&home_menu, "WalCorg Wallet", home_items, 6);
+    menu_init(&home_menu, "WALCORG Wallet", home_items, 6);
     menu_set_title_color(&home_menu, THEME_PRIMARY_DIM);
 
     /* En el home, BACK no sale — vuelve a mostrar el menú */
@@ -458,12 +458,12 @@ screen_result_t screen_settings(void) {
 
 void screen_about(void) {
     tft_clear(THEME_BG);
-    ui_topbar("Acerca de WalCorg", 'i', THEME_PRIMARY_DIM);
+    ui_topbar("Acerca de WALCORG", 'i', THEME_PRIMARY_DIM);
 
     int y = LAYOUT_CONTENT_Y + SPACING_MD;
 
     /* Logo textual */
-    tft_draw_string_centered(y, "WalCorg", THEME_BITCOIN, THEME_BG, FONT_TITLE);
+    tft_draw_string_centered(y, "WALCORG", THEME_BITCOIN, THEME_BG, FONT_TITLE);
     y += FONT_H_TITLE + SPACING_SM;
     tft_draw_string_centered(y, "Cold Wallet", THEME_TEXT_SECONDARY, THEME_BG, FONT_BODY);
     y += FONT_H_BODY + SPACING_LG;
@@ -473,7 +473,7 @@ void screen_about(void) {
         { "Hardware",  "STM32F405RGT6 @ 168MHz" },
         { "Display",   "ILI9488 TFT 480x320"     },
         { "Input",     "AS5600 I2C Click-wheel"  },
-        { "Firmware",  "WalCorg Fase 4"          },
+        { "Firmware",  "WALCORG Fase 4"          },
         { "Base",      "Trezor firmware (LGPL)"  },
         { "Licencia",  "GNU GPL v3"              },
         { "Proyecto",  "walcorg.com"             },
@@ -521,7 +521,7 @@ void screen_usb_ready(void) {
     tft_draw_string_centered(LAYOUT_CONTENT_Y + 175,
         "El dispositivo debe aparecer", THEME_TEXT_SECONDARY, THEME_BG, FONT_SMALL);
     tft_draw_string_centered(LAYOUT_CONTENT_Y + 189,
-        "como 'WalCorg Cold Wallet'.", THEME_TEXT_SECONDARY, THEME_BG, FONT_SMALL);
+        "como 'WALCORG Cold Wallet'.", THEME_TEXT_SECONDARY, THEME_BG, FONT_SMALL);
 
     ui_bottombar(NULL, THEME_BG, "Volver", THEME_PRIMARY_DIM);
     input_flush();

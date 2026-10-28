@@ -1,6 +1,6 @@
 /**
  * @file    rng_test.c
- * @brief   Verificación del Hardware RNG — WalCorg Cold Wallet Fase 1
+ * @brief   Verificación del Hardware RNG — WALCORG Cold Wallet Fase 1
  *
  * ARQUITECTURA DEL RNG EN EL STM32F405:
  *

@@ -1,6 +1,6 @@
 /**
  * @file    wallet_core.c
- * @brief   Implementación del núcleo del wallet — WalCorg Fase 5
+ * @brief   Implementación del núcleo del wallet — WALCORG Fase 5
  *
  * Todas las operaciones que involucran la semilla o claves privadas
  * siguen el mismo patrón de seguridad:

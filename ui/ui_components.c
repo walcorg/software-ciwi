@@ -1,6 +1,6 @@
 /**
  * @file    ui_components.c
- * @brief   Implementación de widgets UI — WalCorg Fase 4
+ * @brief   Implementación de widgets UI — WALCORG Fase 4
  *
  * Todos los componentes usan exclusivamente constantes de
  * ui_theme.h — nunca valores RGB hardcodeados.

@@ -1,6 +1,6 @@
 /**
  * @file    usb_hid.h
- * @brief   Stack USB HID para trezorctl — WalCorg Fase 5
+ * @brief   Stack USB HID para trezorctl — WALCORG Fase 5
  *
  * Implementa el protocolo USB HID de Trezor:
  *   - Descriptores USB (Device, Configuration, HID, Report)
@@ -68,7 +68,7 @@
 /** Profundidad de las colas de mensajes */
 #define HID_QUEUE_DEPTH         4
 
-/* VID/PID WalCorg (usar pid.codes para producción) */
+/* VID/PID WALCORG (usar pid.codes para producción) */
 #define USB_VID                 0x1209
 #define USB_PID                 0x53C1
 

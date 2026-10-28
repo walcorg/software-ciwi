@@ -1,6 +1,6 @@
 /**
  * @file    ili9488_regs.h
- * @brief   Registros y comandos del controlador ILI9488 — WalCorg Fase 2
+ * @brief   Registros y comandos del controlador ILI9488 — WALCORG Fase 2
  *
  * El ILI9488 es el controlador del display TFT de 3.5" (480×320).
  * Se comunica via SPI de 4 hilos:
@@ -259,7 +259,7 @@
 #define ILI9488_DARKGRAY    RGB565( 64,  64,  64)
 #define ILI9488_LIGHTGRAY   RGB565(192, 192, 192)
 
-/* Colores del tema WalCorg (de ui_theme.h en Fase 4) */
+/* Colores del tema WALCORG (de ui_theme.h en Fase 4) */
 #define WALCORG_BG          RGB565( 18,  18,  18)  /**< Fondo oscuro */
 #define WALCORG_PRIMARY     RGB565(  0, 163, 255)  /**< Azul principal */
 #define WALCORG_SUCCESS     RGB565(  0, 200, 100)  /**< Verde confirmación */

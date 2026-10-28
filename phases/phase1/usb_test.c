@@ -1,6 +1,6 @@
 /**
  * @file    usb_test.c
- * @brief   Test de enumeración USB — WalCorg Fase 1
+ * @brief   Test de enumeración USB — WALCORG Fase 1
  *
  * PROPÓSITO:
  *   Verificar que el STM32F405 (pines PA11/PA12) enumera
@@ -13,15 +13,15 @@
  *   ✓ PA11 (USB_DM) y PA12 (USB_DP) configurados correctamente
  *   ✓ Clock USB = 48MHz exactos (PLLQ = 336/7)
  *   ✓ El descriptor USB es reconocido por el sistema operativo
- *   ✓ El dispositivo aparece como "WalCorg Cold Wallet" en lsusb
+ *   ✓ El dispositivo aparece como "WALCORG Cold Wallet" en lsusb
  *   ✓ Las interrupciones OTG_FS se disparan correctamente
  *
  * CÓMO VERIFICAR QUE FUNCIONA:
  *   En Linux:
- *     lsusb | grep WalCorg
+ *     lsusb | grep WALCORG
  *     dmesg | tail -20
  *   Debe aparecer algo como:
- *     Bus 001 Device 012: ID 1209:53c1 WalCorg Cold Wallet
+ *     Bus 001 Device 012: ID 1209:53c1 WALCORG Cold Wallet
  *
  *   Con trezorctl:
  *     pip install trezor
@@ -34,7 +34,7 @@
  *
  * NOTA SOBRE VID/PID:
  *   VID 0x1209 = pid.codes (VID público para proyectos open source)
- *   PID 0x53C1 = asignado tentativamente para WalCorg
+ *   PID 0x53C1 = asignado tentativamente para WALCORG
  *   Para producción: registrar PID en https://pid.codes
  *   Trezor usa VID=0x1209 PID=0x53C1 también — cambiar al registrar.
  *
@@ -78,7 +78,7 @@ static const uint8_t usb_device_descriptor[] = {
     0x00,       /* bDeviceProtocol */
     0x40,       /* bMaxPacketSize0: 64 bytes (máximo para FS HID) */
     0x09, 0x12, /* idVendor:  0x1209 = pid.codes (open source) */
-    0xC1, 0x53, /* idProduct: 0x53C1 = WalCorg tentativo */
+    0xC1, 0x53, /* idProduct: 0x53C1 = WALCORG tentativo */
     0x00, 0x01, /* bcdDevice: versión del dispositivo 1.0 */
     0x01,       /* iManufacturer: índice de string descriptor */
     0x02,       /* iProduct: índice de string descriptor */
@@ -87,8 +87,8 @@ static const uint8_t usb_device_descriptor[] = {
 };
 
 /* Strings del dispositivo — aparecen en lsusb y el OS */
-static const char *usb_manufacturer = "WalCorg Project";
-static const char *usb_product      = "WalCorg Cold Wallet";
+static const char *usb_manufacturer = "WALCORG Project";
+static const char *usb_product      = "WALCORG Cold Wallet";
 static const char *usb_serial       = "0000000000000001";  /* Cambiar por hash único en producción */
 
 
@@ -214,7 +214,7 @@ void usb_test_init(void) {
     HAL_PCD_Start(&hpcd_USB_OTG_FS);
 
     DEBUG_PRINT("[USB] OTG FS iniciado. Conectar cable USB-C...\r\n");
-    DEBUG_PRINT("[USB] Verificar con: lsusb | grep WalCorg\r\n");
+    DEBUG_PRINT("[USB] Verificar con: lsusb | grep WALCORG\r\n");
 }
 
 

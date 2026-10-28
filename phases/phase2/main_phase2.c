@@ -1,6 +1,6 @@
 /**
  * @file    main_phase2.c
- * @brief   Main integrador Fase 2 — WalCorg Cold Wallet
+ * @brief   Main integrador Fase 2 — WALCORG Cold Wallet
  *
  * Une todo lo de Fase 1 + el nuevo driver de display TFT.
  *
@@ -31,8 +31,8 @@
 #include "display_test.h"
 
 /* LED de heartbeat */
-#define LED_PORT    GPIOC
-#define LED_PIN     GPIO_PIN_13
+#define LED_PORT    GPIOB      /* [v0.3] user LED is PB2 on the WeAct board (PC13 is KEY) */
+#define LED_PIN     GPIO_PIN_2
 #define LED_TOGGLE() HAL_GPIO_TogglePin(LED_PORT, LED_PIN)
 
 /* Prototipos privados */
@@ -150,7 +150,7 @@ static void main_loop_phase2(void) {
  * UTILIDADES
  * ========================================================= */
 static void led_init(void) {
-    __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_GPIOB_CLK_ENABLE();
     GPIO_InitTypeDef gpio = {0};
     gpio.Pin   = LED_PIN;
     gpio.Mode  = GPIO_MODE_OUTPUT_PP;
@@ -162,7 +162,7 @@ static void led_init(void) {
 static void print_banner_phase2(void) {
     DEBUG_PRINT("\r\n");
     DEBUG_PRINT("============================================\r\n");
-    DEBUG_PRINT("  WalCorg Cold Wallet — Fase 2\r\n");
+    DEBUG_PRINT("  WALCORG Cold Wallet — Fase 2\r\n");
     DEBUG_PRINT("  Driver TFT ILI9488 + Touch XPT2046\r\n");
     DEBUG_PRINTF("  Build: %s %s\r\n", __DATE__, __TIME__);
     DEBUG_PRINT("  STM32F405RGT6 @ 168MHz\r\n");

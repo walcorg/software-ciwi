@@ -1,6 +1,6 @@
 /**
  * @file    display_tft.h
- * @brief   Driver del display TFT 3.5" ILI9488 — WalCorg Fase 2
+ * @brief   Driver del display TFT 3.5" ILI9488 — WALCORG Fase 2
  *
  * API pública del driver de display. El resto del firmware
  * (layout.c, ui_components.c) solo usa estas funciones —
@@ -271,7 +271,7 @@ void tft_fill_circle(tft_coord_t cx, tft_coord_t cy,
  * El bitmap debe ser un array de uint16_t con w×h píxeles
  * en formato RGB565, almacenado en Flash (const).
  *
- * Uso principal: logo de WalCorg en la pantalla de inicio.
+ * Uso principal: logo de WALCORG en la pantalla de inicio.
  *
  * @param x, y    Posición de la esquina superior izquierda
  * @param w, h    Dimensiones del bitmap

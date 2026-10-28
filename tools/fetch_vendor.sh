@@ -35,4 +35,7 @@ fetch cmsis_core           https://github.com/STMicroelectronics/cmsis_core.git 
 # Only the Trezor crypto library (crypto/ is MIT)
 fetch trezor-firmware      https://github.com/trezor/trezor-firmware.git                  72489948b3c44a37598de9da658be28e4fabb4ae "crypto"
 
+# libtropic, the TROPIC01 SDK by Tropic Square (Clear BSD), v4.2.0 (phase 7)
+fetch libtropic            https://github.com/tropicsquare/libtropic.git                  9085ea5387a8a1d5a946c7e4f633c7134e4909a7 "include src cal hal scripts/tropic01_model LICENSE.md"
+
 echo "Done. Next: make PHASE=1"

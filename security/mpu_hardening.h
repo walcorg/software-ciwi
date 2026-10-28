@@ -1,6 +1,6 @@
 /**
  * @file    mpu_hardening.h
- * @brief   Configuración completa de la MPU — WalCorg Fase 6
+ * @brief   Configuración completa de la MPU — WALCORG Fase 6
  *
  * Extiende la configuración mínima de la MPU de Fase 1
  * (mpu_config_minimal en stm32_walcorg.c) con protecciones

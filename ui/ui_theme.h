@@ -1,6 +1,6 @@
 /**
  * @file    ui_theme.h
- * @brief   Tema visual centralizado — WalCorg Cold Wallet Fase 4
+ * @brief   Tema visual centralizado — WALCORG Cold Wallet Fase 4
  *
  * PUNTO ÚNICO DE VERDAD para todos los valores visuales del wallet.
  * Cambiar un color aquí lo cambia en toda la UI automáticamente.

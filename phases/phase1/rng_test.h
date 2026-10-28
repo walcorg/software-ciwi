@@ -1,6 +1,6 @@
 /**
  * @file    rng_test.h
- * @brief   Verificación del Hardware RNG — WalCorg Cold Wallet Fase 1
+ * @brief   Verificación del Hardware RNG — WALCORG Cold Wallet Fase 1
  *
  * El RNG (Random Number Generator) del STM32F405 es el componente
  * más crítico de seguridad del cold wallet. Sin números verdaderamente

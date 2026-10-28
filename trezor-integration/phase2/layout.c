@@ -1,6 +1,6 @@
 /**
  * @file    layout.c  (legacy/firmware/layout.c — versión MODIFICADA)
- * @brief   Pantallas de UI del wallet adaptadas al TFT 480×320 — WalCorg Fase 2
+ * @brief   Pantallas de UI del wallet adaptadas al TFT 480×320 — WALCORG Fase 2
  *
  * ARCHIVO ORIGINAL: legacy/firmware/layout.c del repo trezor-firmware
  *
@@ -29,7 +29,7 @@
  *
  *   [MOD-L4] Añadimos barra de título y separadores visuales
  *
- *   [MOD-L5] layoutHome() muestra el logo WalCorg en la pantalla
+ *   [MOD-L5] layoutHome() muestra el logo WALCORG en la pantalla
  *            grande (donde el OLED solo mostraba el logo Trezor)
  *
  * ARCHIVOS QUE LLAMAN A LAYOUT.C (NO modificamos estos):
@@ -169,8 +169,8 @@ static void _layout_content_line(int line_num, const char *text,
  * [MOD-L5] En el Trezor One mostraba el logo Trezor (128×64 bitmap)
  * y el label del dispositivo si tenía uno configurado.
  *
- * En WalCorg mostramos:
- *   - Barra superior con "WalCorg" en azul
+ * En WALCORG mostramos:
+ *   - Barra superior con "WALCORG" en azul
  *   - Estado del dispositivo (inicializado / sin configurar)
  *   - Icono de estado (simulado con formas geométricas)
  *   - Instrucción de uso
@@ -178,8 +178,8 @@ static void _layout_content_line(int line_num, const char *text,
 void layoutHome(void) {
     oledClear();
 
-    /* [MOD-L3] Barra de título azul WalCorg */
-    _layout_draw_title_bar("WalCorg Cold Wallet", WALCORG_PRIMARY);
+    /* [MOD-L3] Barra de título azul WALCORG */
+    _layout_draw_title_bar("WALCORG Cold Wallet", WALCORG_PRIMARY);
 
     /* Icono central — círculo con símbolo de Bitcoin */
     tft_fill_circle(OLED_WIDTH / 2, OLED_HEIGHT / 2 - 10, 40, WALCORG_PRIMARY);

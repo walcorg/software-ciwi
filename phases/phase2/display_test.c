@@ -1,6 +1,6 @@
 /**
  * @file    display_test.c
- * @brief   Tests visuales del display TFT — WalCorg Fase 2
+ * @brief   Tests visuales del display TFT — WALCORG Fase 2
  *
  * Cada test dibuja algo en la pantalla y espera 2 segundos.
  * Si la imagen en pantalla coincide con lo descrito, el test pasó.
@@ -77,7 +77,7 @@ void display_test_color_bars(void) {
 void display_test_shapes(void) {
     DEBUG_PRINT("[DTEST] Test 2: Formas geometricas...\r\n");
 
-    tft_clear(WALCORG_BG);  /* Fondo del tema WalCorg */
+    tft_clear(WALCORG_BG);  /* Fondo del tema WALCORG */
 
     uint16_t w = tft_get_width();
     uint16_t h = tft_get_height();
@@ -150,7 +150,7 @@ void display_test_text(void) {
 
     /* Size 2: lectura normal — UI principal */
     tft_draw_string(5, (tft_coord_t)y,
-                    "Size 2: WalCorg Cold Wallet",
+                    "Size 2: WALCORG Cold Wallet",
                     WALCORG_TEXT, WALCORG_BG, 2);
     y += 20;
     tft_draw_string(5, (tft_coord_t)y,

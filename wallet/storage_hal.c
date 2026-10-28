@@ -1,6 +1,6 @@
 /**
  * @file    storage_hal.c
- * @brief   Implementación del almacenamiento seguro NORCOW — WalCorg Fase 5
+ * @brief   Implementación del almacenamiento seguro NORCOW — WALCORG Fase 5
  *
  * ARQUITECTURA DE ALMACENAMIENTO:
  *
@@ -208,6 +208,7 @@ static bool _norcow_find(uint8_t app_id, uint8_t key,
                           const uint8_t **data, uint16_t *len) {
     uint32_t addr = _active_block;
     uint32_t end  = _active_block + NORCOW_SECTOR_SIZE;
+    bool found = false;
 
     while (addr + sizeof(norcow_header_t) <= end) {
         norcow_header_t hdr;
@@ -216,11 +217,13 @@ static bool _norcow_find(uint8_t app_id, uint8_t key,
         /* 0xFFFF = Flash vacía → fin de las entradas */
         if (hdr.len == 0xFFFF) break;
 
-        /* ¿Es la entrada que buscamos? */
+        /* [v0.3] Keep scanning: NORCOW is copy-on-write, so the LAST entry with this
+         * app_id/key is the current value. v0.2 returned the first one, which meant that
+         * updates (fail counter, flags) were written but never read back. */
         if (hdr.app_id == app_id && hdr.key == key) {
             if (data) *data = (const uint8_t *)(addr + sizeof(hdr));
             if (len)  *len  = hdr.len;
-            return true;
+            found = true;
         }
 
         /* Avanzar a la siguiente entrada (alineada a 4 bytes) */
@@ -229,7 +232,7 @@ static bool _norcow_find(uint8_t app_id, uint8_t key,
         addr += entry_size;
     }
 
-    return false;
+    return found;
 }
 
 /**
@@ -368,7 +371,7 @@ bool storage_hal_init(void) {
         memcpy(_cache.label, data, copy_len);
         _cache.label[copy_len] = '\0';
     } else {
-        strncpy(_cache.label, "WalCorg", STORAGE_LABEL_MAX_LEN - 1);
+        strncpy(_cache.label, "WALCORG", STORAGE_LABEL_MAX_LEN - 1);
     }
 
     _cache.initialized = true;
@@ -670,6 +673,23 @@ bool storage_set_label(const char *label) {
 
     return _norcow_write(STORAGE_APP_WALLET, STORAGE_KEY_LABEL,
                           (uint8_t *)label, (uint16_t)len);
+}
+
+/* [v0.3] Generic access for other modules (TROPIC01 pairing key). A zero-length
+ * entry marks the key as deleted. */
+bool storage_put(uint8_t app_id, uint8_t key, const uint8_t *data, uint16_t len) {
+    if (app_id == STORAGE_APP_WALLET) return false;   /* wallet keys use their own API */
+    return _norcow_write(app_id, key, data, len);
+}
+
+bool storage_get(uint8_t app_id, uint8_t key, uint8_t *out, uint16_t max_len,
+                 uint16_t *out_len) {
+    const uint8_t *data;
+    uint16_t len;
+    if (!_norcow_find(app_id, key, &data, &len) || len == 0 || len > max_len) return false;
+    memcpy(out, data, len);
+    if (out_len) *out_len = len;
+    return true;
 }
 
 void storage_print_status(void) {

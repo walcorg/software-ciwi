@@ -1,6 +1,6 @@
 /**
  * @file    crypto_validate.h
- * @brief   Validación crypto contra vectores conocidos — WalCorg Fase 5
+ * @brief   Validación crypto contra vectores conocidos — WALCORG Fase 5
  *
  * Verifica que la librería crypto de Trezor (crypto/) produce
  * resultados correctos en el STM32F405RGT6. Tests contra

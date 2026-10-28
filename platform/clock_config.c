@@ -1,6 +1,6 @@
 /**
  * @file    clock_config.c
- * @brief   Configuración del clock del sistema — WalCorg Fase 1
+ * @brief   Configuración del clock del sistema — WALCORG Fase 1
  *
  * Implementación de SystemClock_Config() como módulo reutilizable.
  * Separado de blink_test.c para que todos los demás archivos

@@ -1,6 +1,6 @@
 /**
  * @file    mpu_hardening.c
- * @brief   Hardening completo de la MPU — WalCorg Fase 6
+ * @brief   Hardening completo de la MPU — WALCORG Fase 6
  * @license GNU GPL v3
  */
 

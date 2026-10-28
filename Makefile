@@ -1,9 +1,10 @@
 # =============================================================================
-# software-ciwi v0.2 — Makefile
+# software-ciwi v0.3 — Makefile
 # Target: STM32F405RGT6 (WeAct Core Board / CiWi)
 #
 #   make                 → phase 1 (default)
 #   make PHASE=1         → phase 1 firmware (build/phase1/ciwi-phase1.elf/.bin/.hex)
+#   make PHASE=7         → phase 7: TROPIC01 secure element + Anchor Protocol
 #   make blink           → minimal LED test (build/blink/ciwi-blink.*)
 #   make flash PHASE=1   → flash with OpenOCD + ST-Link
 #   make flash-blink
@@ -33,6 +34,10 @@ TREZOR_DIR  := $(VENDOR)/trezor-firmware
 # ---------------------------------------------------------------- MCU
 MCU_FLAGS := -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard
 DEFS      := -DSTM32F405xx -DUSE_HAL_DRIVER -DHSE_VALUE=8000000U -DPRODUCTION=0
+
+# Extra defines from the command line, e.g. make PHASE=7 EXTRA_DEFS="-DCIWI_TR01_APPLY_RCONFIG=1"
+EXTRA_DEFS ?=
+DEFS += $(EXTRA_DEFS)
 
 # ---------------------------------------------------------------- flags
 OPT   ?= -Og
@@ -122,6 +127,30 @@ PHASE_SRCS := phases/phase6/main_phase6.c phases/phase1/rng_test.c \
               $(CRYPTO_SRCS)
 endif
 
+# ---------------------------------------------------------------- phase 7: TROPIC01 + Anchor
+# libtropic (Tropic Square), configured like its CMake defaults; logging: errors only.
+LT_DIR  := $(VENDOR)/libtropic
+LT_DEFS := -DLT_HELPERS -DLT_SILICON_REV_ACAB -DLT_LOG_ENABLE_ERROR=1 -DLT_LOG_ENABLE_WARN=0 \
+           -DLT_LOG_ENABLE_INFO=0 -DLT_LOG_ENABLE_DEBUG=0 -DLT_CRC_ERR_RETRY_ATTEMPTS=3 \
+           -DLT_L1_READ_MAX_TRIES=50 -DLT_L1_READ_RETRY_DELAY_MS=25 -DLT_L1_SPI_TIMEOUT_MS=70 \
+           -DLT_L1_INT_TIMEOUT_MS=200 -DLT_HAVE_EXPLICIT_BZERO -DAES_VAR
+LT_SRCS := $(addprefix $(LT_DIR)/src/,libtropic.c lt_crc16.c lt_port_wrap.c lt_l1.c libtropic_l2.c \
+           lt_l2_frame_check.c lt_l3_process.c libtropic_l3.c lt_hkdf.c lt_asn1_der.c \
+           libtropic_default_sh0_keys.c lt_tr01_attrs.c libtropic_secure_memzero.c) \
+           $(addprefix $(LT_DIR)/cal/trezor_crypto/,lt_trezor_crypto_common.c lt_trezor_crypto_aesgcm.c \
+           lt_trezor_crypto_sha256.c lt_trezor_crypto_hmac_sha256.c lt_trezor_crypto_x25519.c) \
+           $(LT_DIR)/hal/stm32/stm32f4xx/libtropic_port_stm32f4xx.c
+TROPIC_SRCS := tropic/tr01_ciwi.c tropic/tr01_pin.c tropic/tr01_platform_stm32.c \
+               anchor/anchor_eip712.c anchor/anchor_ciwi.c anchor/anchor_selftest.c
+ifeq ($(PHASE),7)
+DEFS += $(LT_DEFS)
+PHASE_DIRS := phases/phase7 tropic anchor $(TREZOR_CRYPTO) $(TREZOR_CRYPTO)/aes \
+              $(LT_DIR)/include $(LT_DIR)/src $(LT_DIR)/cal/trezor_crypto $(LT_DIR)/hal/stm32/stm32f4xx
+PHASE_SRCS := phases/phase7/main_phase7.c phases/phase1/rng_test.c wallet/storage_hal.c wallet/trezor_rand_hw.c \
+              $(TROPIC_SRCS) $(LT_SRCS) $(CRYPTO_SRCS) \
+              $(TREZOR_CRYPTO)/aes/aesgcm.c $(TREZOR_CRYPTO)/aes/gf128mul.c
+endif
+
 INCLUDES := $(COMMON_INCLUDES) -Iphases/phase1 -Idrivers/display -Idrivers/touch -Idrivers/backlight \
             -Iui -Iwallet -Isecurity $(addprefix -I,$(PHASE_DIRS))
 
@@ -132,7 +161,7 @@ SRCS := $(PLATFORM_SRCS) $(PHASE_SRCS) $(HAL_SRCS)
 OBJS := $(addprefix $(BUILD)/,$(SRCS:.c=.o)) $(BUILD)/$(STARTUP:.s=.o)
 
 # ---------------------------------------------------------------- rules
-.PHONY: all blink flash flash-blink size clean check-vendor
+.PHONY: all blink flash flash-blink size clean check-vendor erase-storage
 
 all: check-vendor $(BUILD)/$(TARGET).elf $(BUILD)/$(TARGET).bin $(BUILD)/$(TARGET).hex
 	@$(SIZE) $(BUILD)/$(TARGET).elf
@@ -171,6 +200,11 @@ flash-blink:
 
 size: $(BUILD)/$(TARGET).elf
 	$(SIZE) $<
+
+# Erase the NORCOW storage sectors 9-11 (wallet PIN/seed and the TROPIC01 pairing key).
+# Only for a development board whose TROPIC01 was replaced: the old chip cannot be used again.
+erase-storage:
+	$(OPENOCD) -f tools/openocd_weact_f405.cfg -c "init; reset halt; flash erase_sector 0 9 11; reset; exit"
 
 clean:
 	rm -rf build

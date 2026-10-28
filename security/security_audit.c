@@ -1,6 +1,6 @@
 /**
  * @file    security_audit.c
- * @brief   Auditoría de seguridad — WalCorg Fase 6
+ * @brief   Auditoría de seguridad — WALCORG Fase 6
  * @license GNU GPL v3
  */
 
@@ -19,7 +19,7 @@ bool security_audit_run(security_audit_result_t *result) {
     memset(result, 0, sizeof(security_audit_result_t));
 
     DEBUG_PRINT("\r\n[AUDIT] ==========================================\r\n");
-    DEBUG_PRINT("[AUDIT] Ejecutando auditoría de seguridad WalCorg\r\n");
+    DEBUG_PRINT("[AUDIT] Ejecutando auditoría de seguridad WALCORG\r\n");
     DEBUG_PRINT("[AUDIT] ==========================================\r\n\r\n");
 
     uint8_t checks_passed = 0;

@@ -1,6 +1,6 @@
 /**
  * @file    ui_animations.h / ui_animations.c
- * @brief   Animaciones de UI — WalCorg Fase 4
+ * @brief   Animaciones de UI — WALCORG Fase 4
  *
  * Animaciones simples que hacen la interfaz más fluida:
  *   - Fade in/out de pantalla completa

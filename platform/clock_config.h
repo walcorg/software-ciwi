@@ -1,6 +1,6 @@
 /**
  * @file    clock_config.h
- * @brief   Configuración del clock del sistema — WalCorg Fase 1
+ * @brief   Configuración del clock del sistema — WALCORG Fase 1
  *
  * Separa SystemClock_Config() en su propio módulo para que
  * sea reutilizable por todos los archivos del firmware:

@@ -1,6 +1,6 @@
 /**
  * @file    signing_walcorg.c
- * @brief   Protocolo interactivo SignTx — WalCorg Fase 5
+ * @brief   Protocolo interactivo SignTx — WALCORG Fase 5
  *
  * [MOD-SIGN1] UI via ui_screens.c en vez de pantallas OLED Trezor
  * [MOD-SIGN2] Firma via wallet_core.c (incluye tamper check y MPU)

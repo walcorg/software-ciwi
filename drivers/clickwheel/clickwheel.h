@@ -1,6 +1,6 @@
 /**
  * @file    clickwheel.h
- * @brief   Driver para click-wheel via I2C — WalCorg Cold Wallet
+ * @brief   Driver para click-wheel via I2C — WALCORG Cold Wallet
  *
  * Soporta dos ICs comunes de encoder rotativo via I2C:
  *   - AS5600  (encoder magnético, dirección 0x36) — RECOMENDADO
@@ -11,7 +11,7 @@
  *   PB7  → I2C1_SDA  (con pull-up 4.7kΩ a 3.3V)
  *   PB8  → CLICK_BTN (GPIO input, pull-up interno activo)
  *
- * @author  WalCorg Project
+ * @author  WALCORG Project
  * @license GNU GPL v3
  */
 

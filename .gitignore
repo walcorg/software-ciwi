@@ -1,3 +1,9 @@
 build/
-vendor/
+vendor
 *.o
+tests/host/ciwi_host
+tests/host/ciwi-keystore.bin
+tests/host/vectors.json
+tests/host/model.log
+tests/host/model.pid
+tests/host/node_modules

@@ -1,12 +1,12 @@
 /**
  * @file    main_phase4.c
- * @brief   Main integrador Fase 4 — WalCorg Cold Wallet
+ * @brief   Main integrador Fase 4 — WALCORG Cold Wallet
  *
  * Une las 4 fases:
  *   Fase 1 → STM32 HAL, clock, UART, RNG
  *   Fase 2 → Display TFT ILI9488, touch XPT2046
  *   Fase 3 → Click-wheel AS5600, menús, buttons.c
- *   Fase 4 → UI tema WalCorg, animaciones, backlight PWM
+ *   Fase 4 → UI tema WALCORG, animaciones, backlight PWM
  *
  * SECUENCIA DE ARRANQUE:
  *   stm32_init()           → HAL, clock 168MHz, UART, MPU
@@ -20,7 +20,7 @@
  *
  * CRITERIO DE ÉXITO DE FASE 4:
  *   ✓ Splash screen con animación de fade-in
- *   ✓ Menú principal con tema WalCorg (colores, tipografía)
+ *   ✓ Menú principal con tema WALCORG (colores, tipografía)
  *   ✓ Pantallas de recibir, enviar, PIN y semilla funcionando
  *   ✓ Backlight con fade suave al encender
  *   ✓ Auto-dim después de 30s de inactividad
@@ -45,8 +45,8 @@
 #include "menu.h"
 
 /* LED heartbeat */
-#define LED_PORT     GPIOC
-#define LED_PIN      GPIO_PIN_13
+#define LED_PORT     GPIOB      /* [v0.3] user LED is PB2 on the WeAct board (PC13 is KEY) */
+#define LED_PIN      GPIO_PIN_2
 #define LED_TOGGLE() HAL_GPIO_TogglePin(LED_PORT, LED_PIN)
 
 /* Prototipos privados */
@@ -106,7 +106,7 @@ int main(void) {
     DEBUG_PRINT("############################################\r\n");
     DEBUG_PRINT("##                                        ##\r\n");
     DEBUG_PRINT("##   FASE 4 COMPLETADA EXITOSAMENTE       ##\r\n");
-    DEBUG_PRINT("##   UI WalCorg con tema completo         ##\r\n");
+    DEBUG_PRINT("##   UI WALCORG con tema completo         ##\r\n");
     DEBUG_PRINT("##   Backlight PWM + fade                 ##\r\n");
     DEBUG_PRINT("##   Animaciones de transicion            ##\r\n");
     DEBUG_PRINT("##   Listo para Fase 5 (Crypto/Wallet)    ##\r\n");
@@ -123,7 +123,7 @@ int main(void) {
  * SPLASH SCREEN
  *
  * Pantalla de bienvenida con:
- *   1. Logo WalCorg (texto estilizado)
+ *   1. Logo WALCORG (texto estilizado)
  *   2. Barra de progreso de inicialización
  *   3. Fade-in animado
  *   4. Check mark de éxito
@@ -143,7 +143,7 @@ static void splash_screen(void) {
     tft_fill_rect(0, 0, 480, 320, THEME_BG);  /* Cubrir con bg */
 
     /* Logo principal */
-    tft_draw_string_centered(70, "WalCorg", THEME_BITCOIN, THEME_BG, FONT_TITLE);
+    tft_draw_string_centered(70, "WALCORG", THEME_BITCOIN, THEME_BG, FONT_TITLE);
     tft_draw_string_centered(100, "Cold Wallet", THEME_TEXT_SECONDARY, THEME_BG, FONT_BODY);
 
     /* Línea decorativa */
@@ -381,7 +381,7 @@ static void main_wallet_loop(void) {
  * UTILIDADES
  * ========================================================= */
 static void led_init(void) {
-    __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_GPIOB_CLK_ENABLE();
     GPIO_InitTypeDef gpio = {0};
     gpio.Pin   = LED_PIN;
     gpio.Mode  = GPIO_MODE_OUTPUT_PP;
@@ -393,8 +393,8 @@ static void led_init(void) {
 static void print_banner(void) {
     DEBUG_PRINT("\r\n");
     DEBUG_PRINT("============================================\r\n");
-    DEBUG_PRINT("  WalCorg Cold Wallet — Fase 4\r\n");
-    DEBUG_PRINT("  UI Completa + Tema WalCorg\r\n");
+    DEBUG_PRINT("  WALCORG Cold Wallet — Fase 4\r\n");
+    DEBUG_PRINT("  UI Completa + Tema WALCORG\r\n");
     DEBUG_PRINT("  Backlight PWM + Animaciones\r\n");
     DEBUG_PRINTF("  Build: %s %s\r\n", __DATE__, __TIME__);
     DEBUG_PRINT("  STM32F405RGT6 @ 168MHz\r\n");

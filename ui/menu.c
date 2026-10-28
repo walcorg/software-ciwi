@@ -1,6 +1,6 @@
 /**
  * @file    menu.c
- * @brief   Motor de menú navegable — WalCorg Fase 3
+ * @brief   Motor de menú navegable — WALCORG Fase 3
  *
  * Implementa el renderizado y la navegación del menú.
  * Usa escritura parcial al TFT para minimizar el número de

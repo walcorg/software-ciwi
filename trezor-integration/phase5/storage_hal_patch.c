@@ -1,6 +1,6 @@
 /**
  * @file    storage_hal_patch.c
- * @brief   PARCHE PARA storage_hal.c — WalCorg Fase 5
+ * @brief   PARCHE PARA storage_hal.c — WALCORG Fase 5
  *
  * Este archivo documenta los cambios [MOD-S3] que deben aplicarse
  * a storage_hal.c. El cambio es mínimo: añadir 3 líneas que integran

@@ -1,6 +1,6 @@
 /**
  * @file    display_tft.c
- * @brief   Driver TFT ILI9488 via SPI1 — WalCorg Fase 2
+ * @brief   Driver TFT ILI9488 via SPI1 — WALCORG Fase 2
  *
  * Implementación del driver de display. Organizado en capas:
  *

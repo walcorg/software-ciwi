@@ -1,6 +1,6 @@
 /**
  * @file    display.h  (legacy/firmware/display.h — versión MODIFICADA)
- * @brief   Abstracción del display para WalCorg Cold Wallet
+ * @brief   Abstracción del display para WALCORG Cold Wallet
  *
  * ARCHIVO ORIGINAL:  legacy/firmware/display.h  del repo trezor-firmware
  * MODIFICADO PARA:   Display TFT ILI9488 3.5" 480×320 en lugar del
@@ -8,7 +8,7 @@
  *
  * RESUMEN DE CAMBIOS:
  * ┌─────────────────────┬──────────────────┬──────────────────────┐
- * │ Aspecto             │ Original (OLED)  │ WalCorg (TFT)        │
+ * │ Aspecto             │ Original (OLED)  │ WALCORG (TFT)        │
  * ├─────────────────────┼──────────────────┼──────────────────────┤
  * │ Ancho               │ 128 px           │ 480 px               │
  * │ Alto                │  64 px           │ 320 px               │
@@ -84,10 +84,10 @@
 /** Color de primer plano (texto, formas) — blanco en TFT */
 #define OLED_COLOR_WHITE    ILI9488_WHITE
 
-/** Color de fondo — negro oscuro del tema WalCorg */
+/** Color de fondo — negro oscuro del tema WALCORG */
 #define OLED_COLOR_BLACK    WALCORG_BG
 
-/** Color de acento — azul primario WalCorg */
+/** Color de acento — azul primario WALCORG */
 #define OLED_COLOR_ACCENT   WALCORG_PRIMARY
 
 /** Colores de estado */
@@ -273,7 +273,7 @@ void oledSetBgColor(tft_color_t color);
 
 /**
  * @brief Restaura los colores al tema por defecto.
- * (Blanco sobre fondo oscuro WalCorg)
+ * (Blanco sobre fondo oscuro WALCORG)
  */
 void oledResetColors(void);
 

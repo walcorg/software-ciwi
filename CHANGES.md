@@ -1,3 +1,41 @@
+# Changes from v0.2 to v0.3
+
+Every change in existing files is marked `[v0.3]` in the source code.
+
+## New: phase 7, TROPIC01 and the Anchor Protocol
+
+| Area | Files | What it does |
+| --- | --- | --- |
+| TROPIC01 driver | `tropic/tr01_ciwi.{c,h}` | Bring-up, chip info, sessions, idempotent provisioning (SH0 → CiWi key in slot 1, P-256 anchor key in ECC slot 0, claim counter), optional access policy (R-config), optional and irreversible SH0 invalidation, low-s signatures verified before release |
+| PIN | `tropic/tr01_pin.{c,h}` | MAC-and-Destroy PIN, 10 attempts, bound to the STM32 unique ID; releases a 32-byte key for the seed |
+| STM32 port | `tropic/tr01_platform_stm32.c` | SPI2 on PB13/PB14/PB15, CS PB12, GPO PB10; pairing key in NORCOW; uses libtropic's STM32F4 port |
+| Anchor Protocol v0.2 | `anchor/anchor_eip712.{c,h}`, `anchor/anchor_ciwi.{c,h}` | EIP-712 hashing of every message, shield signature checks, Claim / Bind / NftClaim signing with TROPIC01 |
+| Self-test | `anchor/anchor_selftest.{c,h}`, `phases/phase7/main_phase7.c` | End-to-end run with a test shield key, KEY-button confirmation, JSON vectors on the UART |
+| Host test bench | `tests/host/` | Same sources on a PC against the TROPIC01 model; `verify.js` checks the vectors with ethers.js and @noble/curves |
+| Build | `Makefile` (`PHASE=7`, `EXTRA_DEFS`, `erase-storage`), `tools/fetch_vendor.sh` (libtropic v4.2.0, pinned) | |
+
+## Bugs fixed in existing code
+
+| # | Problem | Effect | Fix |
+| --- | --- | --- | --- |
+| 18 | `stm32_walcorg.c`: the minimal MPU makes all flash read-only and has no background region | On the board, every NORCOW write (PIN in phase 5, pairing key in phase 7) and every read of the unique ID would raise a MemManage fault | Region 4: storage sectors 9-11 read/write, not executable; region 5: system memory/UID read-only |
+| 19 | `storage_hal.c`: `_norcow_find()` returned the **first** entry for a key | NORCOW is copy-on-write, so updates (fail counter, flags) were written but never read back | Returns the last entry |
+| 20 | LED on PC13 in `main_phase2.c` to `main_phase6.c` | Same problem as #5 in phases 2-6: PC13 is KEY; driving it as an output against the button | LED on PB2 |
+| 21 | "WalCorg" in strings and comments | Brand spelling | "WALCORG" |
+
+## Found, not changed
+
+- `security/mpu_hardening.c` (phase 6): region 2 is 512 KB at `0x080A0000`, which is not aligned to
+  its size, so the MPU uses `0x08080000` and the region also covers sector 8 (code).
+- libtropic `examples/model/mac_and_destroy`: after a correct PIN, the slots are re-armed only up to
+  `MACANDD_ROUNDS - 2`, so the top slot stays destroyed and the next correct PIN fails. Confirmed on the
+  model; `tr01_pin.c` re-arms every used slot. To report to Tropic Square.
+
+## Other
+
+- `storage_hal`: generic `storage_put()` / `storage_get()` for apps other than the wallet.
+- `dist/`: phase 7 binaries and `THIRD-PARTY-NOTICES.txt` (libtropic Clear BSD notice).
+
 # Changes from v0.1 (original draft) to v0.2
 
 Every change is marked `[v0.2]` in the source code.

@@ -1,5 +1,5 @@
 /* =============================================================================
- * stm32f405rgt6.ld  —  Linker Script para WalCorg Cold Wallet
+ * stm32f405rgt6.ld  —  Linker Script para WALCORG Cold Wallet
  * -----------------------------------------------------------------------------
  * Define el mapa de memoria del STM32F405RGT6 y cómo el linker
  * distribuye las secciones del firmware (.text, .data, .bss, etc.)

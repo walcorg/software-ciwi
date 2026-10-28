@@ -1,6 +1,6 @@
 /**
  * @file    flash_protect.c
- * @brief   Protección física de Flash — WalCorg Fase 6
+ * @brief   Protección física de Flash — WALCORG Fase 6
  *
  * Los Option Bytes del STM32F4 viven en una región especial de
  * Flash separada del código de usuario (0x1FFFC000-0x1FFFC00F).

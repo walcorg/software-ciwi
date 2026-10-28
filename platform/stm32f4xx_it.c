@@ -1,6 +1,6 @@
 /**
  * @file    stm32f4xx_it.c
- * @brief   Manejadores de interrupción — WalCorg Fase 1
+ * @brief   Manejadores de interrupción — WALCORG Fase 1
  *
  * Los "fault handlers" (HardFault, MemManage, BusFault, UsageFault)
  * son especialmente importantes durante el desarrollo: cuando el CPU

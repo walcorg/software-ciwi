@@ -1,6 +1,6 @@
 /**
  * @file    clickwheel.c
- * @brief   Driver click-wheel via I2C — WalCorg Cold Wallet
+ * @brief   Driver click-wheel via I2C — WALCORG Cold Wallet
  *
  * Implementación para AS5600 (encoder magnético de 12 bits via I2C).
  * El AS5600 entrega el ángulo absoluto en 12 bits (0–4095),

@@ -1,6 +1,6 @@
 /**
  * @file    font.c
- * @brief   Fuente bitmap 5x7 y función de dibujo — WalCorg Fase 2
+ * @brief   Fuente bitmap 5x7 y función de dibujo — WALCORG Fase 2
  * @license GNU GPL v3 — Tabla de fuente basada en Adafruit GFX (MIT)
  */
 

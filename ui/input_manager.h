@@ -1,6 +1,6 @@
 /**
  * @file    input_manager.h
- * @brief   Gestor de entrada — abstracción del click-wheel — WalCorg Fase 3
+ * @brief   Gestor de entrada — abstracción del click-wheel — WALCORG Fase 3
  *
  * PROPÓSITO:
  *   El input_manager es la capa entre el hardware del click-wheel

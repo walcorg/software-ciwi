@@ -1,6 +1,6 @@
 /**
  * @file    uart_debug.h
- * @brief   Debug por UART1 (PA9 TX) — WalCorg Fase 1
+ * @brief   Debug por UART1 (PA9 TX) — WALCORG Fase 1
  *
  * Redirige printf() al puerto UART1 del STM32F405 para que
  * puedas ver mensajes de debug en cualquier monitor serial

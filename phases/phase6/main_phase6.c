@@ -1,12 +1,12 @@
 /**
  * @file    main_phase6.c
- * @brief   Main integrador Fase 6 — WalCorg Cold Wallet (FINAL)
+ * @brief   Main integrador Fase 6 — WALCORG Cold Wallet (FINAL)
  *
  * Último main del roadmap. Une las 6 fases completas:
  *   Fase 1 → STM32 HAL, clock, RNG hardware
  *   Fase 2 → Display TFT, touch
  *   Fase 3 → Click-wheel, menús
- *   Fase 4 → UI WalCorg, backlight PWM
+ *   Fase 4 → UI WALCORG, backlight PWM
  *   Fase 5 → Crypto, storage cifrado, USB HID
  *   Fase 6 → RDP, anti-tamper, MPU hardening, rate-limiting,
  *             security audit
@@ -49,8 +49,8 @@
 
 extern void fsm_dispatch(const usb_message_t *msg);
 
-#define LED_PORT     GPIOC
-#define LED_PIN      GPIO_PIN_13
+#define LED_PORT     GPIOB      /* [v0.3] user LED is PB2 on the WeAct board (PC13 is KEY) */
+#define LED_PIN      GPIO_PIN_2
 #define LED_TOGGLE() HAL_GPIO_TogglePin(LED_PORT, LED_PIN)
 
 extern void stm32_init(void);
@@ -218,7 +218,7 @@ static void show_local_menu_secure(void) {
     };
 
     menu_t menu;
-    menu_init(&menu, "WalCorg Wallet", wallet_items, 6);
+    menu_init(&menu, "WALCORG Wallet", wallet_items, 6);
     menu_set_title_color(&menu, THEME_PRIMARY_DIM);
 
     int selection = menu_run(&menu);
@@ -350,11 +350,11 @@ static void show_local_menu_secure(void) {
  * ========================================================= */
 static void splash_screen_final(void) {
     tft_clear(THEME_BG);
-    ui_topbar("WalCorg Cold Wallet", 0, THEME_SUCCESS_DIM);
+    ui_topbar("WALCORG Cold Wallet", 0, THEME_SUCCESS_DIM);
 
     anim_success_check(tft_get_width() / 2, 100, THEME_SUCCESS);
 
-    tft_draw_string_centered(150, "WalCorg v1.0", THEME_BITCOIN, THEME_BG, FONT_TITLE);
+    tft_draw_string_centered(150, "WALCORG v1.0", THEME_BITCOIN, THEME_BG, FONT_TITLE);
     tft_draw_string_centered(180, "Firmware completo", THEME_TEXT_SECONDARY, THEME_BG, FONT_BODY);
     tft_draw_string_centered(205, "Fases 1-6 integradas", THEME_TEXT_DISABLED, THEME_BG, FONT_SMALL);
     tft_draw_string_centered(220, "walcorg.com — GNU GPL v3", THEME_TEXT_DISABLED, THEME_BG, FONT_SMALL);
@@ -368,7 +368,7 @@ static void splash_screen_final(void) {
  * UTILIDADES
  * ========================================================= */
 static void led_init(void) {
-    __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_GPIOB_CLK_ENABLE();
     GPIO_InitTypeDef gpio = {0};
     gpio.Pin   = LED_PIN;
     gpio.Mode  = GPIO_MODE_OUTPUT_PP;
@@ -380,7 +380,7 @@ static void led_init(void) {
 static void print_banner(void) {
     DEBUG_PRINT("\r\n");
     DEBUG_PRINT("============================================\r\n");
-    DEBUG_PRINT("  WalCorg Cold Wallet — Fase 6 (FINAL)\r\n");
+    DEBUG_PRINT("  WALCORG Cold Wallet — Fase 6 (FINAL)\r\n");
     DEBUG_PRINT("  Security Hardening Completo\r\n");
     DEBUG_PRINTF("  Build: %s %s\r\n", __DATE__, __TIME__);
     DEBUG_PRINTF("  PRODUCTION=%d\r\n", PRODUCTION);

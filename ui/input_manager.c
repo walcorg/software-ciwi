@@ -1,6 +1,6 @@
 /**
  * @file    input_manager.c
- * @brief   Gestor de entrada — WalCorg Fase 3
+ * @brief   Gestor de entrada — WALCORG Fase 3
  *
  * Implementa la capa de abstracción entre el hardware del
  * click-wheel y el resto del firmware. Mantiene una cola

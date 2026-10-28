@@ -1,6 +1,6 @@
 /**
  * @file    tamper_detect.c
- * @brief   Detección de tamper — WalCorg Fase 6
+ * @brief   Detección de tamper — WALCORG Fase 6
  *
  * @license GNU GPL v3
  */

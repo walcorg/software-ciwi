@@ -1,0 +1,10 @@
+{
+  "name": "ciwi-host-tests",
+  "private": true,
+  "description": "Independent check of the CiWi Anchor vectors (ethers.js + @noble/curves)",
+  "license": "GPL-3.0-only",
+  "dependencies": {
+    "@noble/curves": "1.9.7",
+    "ethers": "6.17.0"
+  }
+}

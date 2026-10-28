@@ -1,6 +1,6 @@
 /**
  * @file    ui_animations.c
- * @brief   Implementación de animaciones — WalCorg Fase 4
+ * @brief   Implementación de animaciones — WALCORG Fase 4
  *
  * Las animaciones usan exclusivamente operaciones de fill_rect
  * y draw_circle que ya están optimizadas en display_tft.c.

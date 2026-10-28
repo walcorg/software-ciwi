@@ -1,6 +1,6 @@
 /**
  * @file    display_phase4.c  → extiende display.c de Fase 2
- * @brief   Extensiones del display para Fase 4 — WalCorg
+ * @brief   Extensiones del display para Fase 4 — WALCORG
  *
  * DIFERENCIAS RESPECTO A display.c DE FASE 2:
  *

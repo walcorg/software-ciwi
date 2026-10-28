@@ -1,6 +1,6 @@
 /**
  * @file    blink_test.c
- * @brief   Test de bringup Fase 1 — WalCorg Cold Wallet
+ * @brief   Test de bringup Fase 1 — WALCORG Cold Wallet
  *
  * PROPÓSITO:
  *   Este es el primer programa que debes flashear al WeAct F405.

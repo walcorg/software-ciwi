@@ -1,12 +1,12 @@
 /**
  * @file    main_phase5.c
- * @brief   Main integrador Fase 5 — WalCorg Cold Wallet
+ * @brief   Main integrador Fase 5 — WALCORG Cold Wallet
  *
  * Une las 5 fases:
  *   Fase 1 → STM32 HAL, clock 168MHz, UART, RNG hardware
  *   Fase 2 → Display TFT ILI9488, touch XPT2046
  *   Fase 3 → Click-wheel AS5600, menús navegables
- *   Fase 4 → UI tema WalCorg, animaciones, backlight PWM
+ *   Fase 4 → UI tema WALCORG, animaciones, backlight PWM
  *   Fase 5 → Crypto BIP39/BIP32/ECDSA, storage NORCOW,
  *             USB HID, FSM trezorctl
  *
@@ -68,8 +68,8 @@
 extern void fsm_dispatch(const usb_message_t *msg);
 
 /* LED heartbeat */
-#define LED_PORT     GPIOC
-#define LED_PIN      GPIO_PIN_13
+#define LED_PORT     GPIOB      /* [v0.3] user LED is PB2 on the WeAct board (PC13 is KEY) */
+#define LED_PIN      GPIO_PIN_2
 #define LED_TOGGLE() HAL_GPIO_TogglePin(LED_PORT, LED_PIN)
 
 /* Prototipos privados */
@@ -197,7 +197,7 @@ int main(void) {
  * ========================================================= */
 static void handle_first_run(void) {
     tft_clear(THEME_BG);
-    ui_topbar("Bienvenido a WalCorg", 0, THEME_PRIMARY_DIM);
+    ui_topbar("Bienvenido a WALCORG", 0, THEME_PRIMARY_DIM);
 
     tft_draw_string_centered(70,
         "Este dispositivo no tiene", THEME_TEXT_PRIMARY, THEME_BG, FONT_BODY);
@@ -386,7 +386,7 @@ static void show_local_menu(void) {
     };
 
     menu_t menu;
-    menu_init(&menu, "WalCorg Wallet", wallet_items, 6);
+    menu_init(&menu, "WALCORG Wallet", wallet_items, 6);
     menu_set_title_color(&menu, THEME_PRIMARY_DIM);
 
     int selection = menu_run(&menu);
@@ -489,7 +489,7 @@ static void show_local_menu(void) {
 
             int y = LAYOUT_CONTENT_Y + 10;
             struct { const char *k; const char *v; } info[] = {
-                { "Modelo",    "WalCorg Cold Wallet"        },
+                { "Modelo",    "WALCORG Cold Wallet"        },
                 { "Fase",      "5 — Crypto + USB HID"       },
                 { "MCU",       "STM32F405RGT6 @ 168MHz"     },
                 { "Display",   "ILI9488 480x320 TFT"        },
@@ -526,9 +526,9 @@ static void show_local_menu(void) {
 static void splash_screen_phase5(void) {
     tft_clear(THEME_BG);
 
-    ui_topbar("WalCorg Cold Wallet", 0, THEME_PRIMARY_DIM);
+    ui_topbar("WALCORG Cold Wallet", 0, THEME_PRIMARY_DIM);
 
-    tft_draw_string_centered(70, "WalCorg", THEME_BITCOIN, THEME_BG, FONT_TITLE);
+    tft_draw_string_centered(70, "WALCORG", THEME_BITCOIN, THEME_BG, FONT_TITLE);
     tft_draw_string_centered(100, "Cold Wallet v5", THEME_TEXT_SECONDARY, THEME_BG, FONT_BODY);
 
     /* Estado del sistema */
@@ -563,7 +563,7 @@ static void splash_screen_phase5(void) {
  * UTILIDADES
  * ========================================================= */
 static void led_init(void) {
-    __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_GPIOB_CLK_ENABLE();
     GPIO_InitTypeDef gpio = {0};
     gpio.Pin   = LED_PIN;
     gpio.Mode  = GPIO_MODE_OUTPUT_PP;
@@ -575,7 +575,7 @@ static void led_init(void) {
 static void print_banner(void) {
     DEBUG_PRINT("\r\n");
     DEBUG_PRINT("============================================\r\n");
-    DEBUG_PRINT("  WalCorg Cold Wallet — Fase 5\r\n");
+    DEBUG_PRINT("  WALCORG Cold Wallet — Fase 5\r\n");
     DEBUG_PRINT("  Crypto + Storage + USB HID\r\n");
     DEBUG_PRINT("  BIP39 / BIP32 / BIP44 / ECDSA\r\n");
     DEBUG_PRINTF("  Build: %s %s\r\n", __DATE__, __TIME__);

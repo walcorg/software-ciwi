@@ -1,6 +1,6 @@
 /**
  * @file    backlight.c
- * @brief   Control PWM de backlight — WalCorg Fase 4
+ * @brief   Control PWM de backlight — WALCORG Fase 4
  *
  * TIM3_CH4 en PB1 genera la señal PWM.
  *

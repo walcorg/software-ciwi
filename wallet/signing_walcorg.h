@@ -1,6 +1,6 @@
 /**
  * @file    signing_walcorg.h
- * @brief   Protocolo interactivo de firma de TX Bitcoin — WalCorg Fase 5
+ * @brief   Protocolo interactivo de firma de TX Bitcoin — WALCORG Fase 5
  *
  * API pública del módulo de firma. El FSM llama estas funciones
  * en respuesta a los mensajes USB de trezorctl:

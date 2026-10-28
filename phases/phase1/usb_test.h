@@ -1,6 +1,6 @@
 /**
  * @file    usb_test.h
- * @brief   Test de enumeración USB — WalCorg Fase 1
+ * @brief   Test de enumeración USB — WALCORG Fase 1
  * @license GNU GPL v3
  */
 

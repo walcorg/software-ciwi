@@ -1,6 +1,6 @@
 /**
  * @file    buttons.c  (legacy/firmware/buttons.c — versión MODIFICADA)
- * @brief   Adaptación de botones físicos a click-wheel — WalCorg Fase 3
+ * @brief   Adaptación de botones físicos a click-wheel — WALCORG Fase 3
  *
  * ARCHIVO ORIGINAL: legacy/firmware/buttons.c del repo trezor-firmware
  *

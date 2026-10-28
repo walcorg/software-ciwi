@@ -1,6 +1,6 @@
 /**
  * @file    pin_delay.c
- * @brief   Rate-limiting de PIN — WalCorg Fase 6
+ * @brief   Rate-limiting de PIN — WALCORG Fase 6
  * @license GNU GPL v3
  */
 

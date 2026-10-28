@@ -1,6 +1,6 @@
 /**
  * @file    uart_debug.c
- * @brief   Debug por UART1 — WalCorg Fase 1
+ * @brief   Debug por UART1 — WALCORG Fase 1
  *
  * Implementa el canal de debug por UART y redirige la función
  * _write() del sistema para que printf() funcione sobre UART.
@@ -101,7 +101,7 @@ void debug_uart_init(void) {
      * la UART está funcionando correctamente */
     debug_print("\r\n");
     debug_print("=====================================\r\n");
-    debug_print(" WalCorg Cold Wallet — Debug UART\r\n");
+    debug_print(" WALCORG Cold Wallet — Debug UART\r\n");
     debug_print(" 115200-8N1 | PA9 TX | STM32F405\r\n");
     debug_print("=====================================\r\n");
 }

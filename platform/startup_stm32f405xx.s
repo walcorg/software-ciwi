@@ -1,6 +1,6 @@
 /**
  * @file    startup_stm32f405xx.s
- * @brief   Archivo de arranque para STM32F405RGT6 — WalCorg Cold Wallet
+ * @brief   Archivo de arranque para STM32F405RGT6 — WALCORG Cold Wallet
  *
  * PROPÓSITO:
  *   Este es el PRIMER código que ejecuta el chip cuando se enciende
@@ -20,7 +20,7 @@
  *   Adaptado de STM32CubeF4 v1.28.0:
  *   Drivers/CMSIS/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f405xx.s
  *
- *   Modificaciones para WalCorg:
+ *   Modificaciones para WALCORG:
  *   [MOD-1] Añadidos comentarios explicativos en español
  *   [MOD-2] Añadido handler de inicialización de CCM RAM
  *   [MOD-3] Default_Handler imprime por UART en PRODUCTION=0

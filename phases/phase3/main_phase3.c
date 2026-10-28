@@ -1,6 +1,6 @@
 /**
  * @file    main_phase3.c
- * @brief   Main integrador Fase 3 — WalCorg Cold Wallet
+ * @brief   Main integrador Fase 3 — WALCORG Cold Wallet
  *
  * Une todo: Fase 1 (toolchain + HAL) + Fase 2 (display TFT)
  * + Fase 3 (click-wheel + navegación de menú).
@@ -34,8 +34,8 @@
 #include "menu.h"
 
 /* LED heartbeat */
-#define LED_PORT    GPIOC
-#define LED_PIN     GPIO_PIN_13
+#define LED_PORT    GPIOB      /* [v0.3] user LED is PB2 on the WeAct board (PC13 is KEY) */
+#define LED_PIN     GPIO_PIN_2
 #define LED_TOGGLE() HAL_GPIO_TogglePin(LED_PORT, LED_PIN)
 
 /* Prototipos privados */
@@ -116,7 +116,7 @@ int main(void) {
     DEBUG_PRINT("##   Click-wheel funcional                ##\r\n");
     DEBUG_PRINT("##   Menus navegables                     ##\r\n");
     DEBUG_PRINT("##   BTN_YES/NO compatibles con Trezor    ##\r\n");
-    DEBUG_PRINT("##   Listo para Fase 4 (UI WalCorg)       ##\r\n");
+    DEBUG_PRINT("##   Listo para Fase 4 (UI WALCORG)       ##\r\n");
     DEBUG_PRINT("##                                        ##\r\n");
     DEBUG_PRINT("############################################\r\n\r\n");
 
@@ -161,7 +161,7 @@ static void show_wallet_menu(void) {
     };
 
     menu_t wallet_menu;
-    menu_init(&wallet_menu, "WalCorg Wallet", wallet_items, 6);
+    menu_init(&wallet_menu, "WALCORG Wallet", wallet_items, 6);
 
     bool running = true;
 
@@ -243,7 +243,7 @@ static void show_wallet_menu(void) {
                 tft_fill_rect(0, 0, tft_get_width(), 36, WALCORG_PRIMARY);
                 tft_draw_string_centered(10, "Informacion",
                                          ILI9488_WHITE, WALCORG_PRIMARY, 2);
-                tft_draw_string_centered(60, "WalCorg Cold Wallet",
+                tft_draw_string_centered(60, "WALCORG Cold Wallet",
                                          WALCORG_TEXT, WALCORG_BG, 2);
                 tft_draw_string_centered(90,  "Fase 3 — Click-wheel",
                                          WALCORG_SUBTEXT, WALCORG_BG, 1);
@@ -315,7 +315,7 @@ static void main_loop_phase3(void) {
  * UTILIDADES
  * ========================================================= */
 static void led_init(void) {
-    __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_GPIOB_CLK_ENABLE();
     GPIO_InitTypeDef gpio = {0};
     gpio.Pin   = LED_PIN;
     gpio.Mode  = GPIO_MODE_OUTPUT_PP;
@@ -327,7 +327,7 @@ static void led_init(void) {
 static void print_banner(void) {
     DEBUG_PRINT("\r\n");
     DEBUG_PRINT("============================================\r\n");
-    DEBUG_PRINT("  WalCorg Cold Wallet — Fase 3\r\n");
+    DEBUG_PRINT("  WALCORG Cold Wallet — Fase 3\r\n");
     DEBUG_PRINT("  Click-wheel AS5600 + Menus TFT\r\n");
     DEBUG_PRINTF("  Build: %s %s\r\n", __DATE__, __TIME__);
     DEBUG_PRINT("  STM32F405RGT6 @ 168MHz\r\n");

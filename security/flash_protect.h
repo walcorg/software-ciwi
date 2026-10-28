@@ -1,6 +1,6 @@
 /**
  * @file    flash_protect.h
- * @brief   Protección física de Flash — WalCorg Fase 6
+ * @brief   Protección física de Flash — WALCORG Fase 6
  *
  * Configura los Option Bytes del STM32F405 para proteger
  * el firmware y los datos del wallet contra extracción física.

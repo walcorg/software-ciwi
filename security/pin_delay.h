@@ -1,6 +1,6 @@
 /**
  * @file    pin_delay.h
- * @brief   Rate-limiting de intentos de PIN — WalCorg Fase 6
+ * @brief   Rate-limiting de intentos de PIN — WALCORG Fase 6
  *
  * Implementa el mismo mecanismo de delay exponencial que usa
  * el Trezor real: cada intento fallido de PIN incrementa el

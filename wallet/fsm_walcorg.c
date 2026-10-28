@@ -1,6 +1,6 @@
 /**
  * @file    fsm_walcorg.c
- * @brief   FSM del wallet con protocolo SignTx interactivo — WalCorg Fase 5
+ * @brief   FSM del wallet con protocolo SignTx interactivo — WALCORG Fase 5
  *
  * CAMBIOS RESPECTO A LA VERSIÓN ANTERIOR DE fsm_walcorg.c:
  *
@@ -117,7 +117,7 @@ static void _handle_initialize(void) {
     pos += _pb_write_uint32(resp + pos, 3,  0);    /* minor_version */
     pos += _pb_write_uint32(resp + pos, 4,  0);    /* patch_version */
     pos += _pb_write_bool  (resp + pos, 5,  false);/* bootloader_mode */
-    pos += _pb_write_string(resp + pos, 11, "WalCorg");
+    pos += _pb_write_string(resp + pos, 11, "WALCORG");
     pos += _pb_write_bool  (resp + pos, 12, true); /* firmware_present */
     pos += _pb_write_bool  (resp + pos, 13, wallet_is_initialized());
     pos += _pb_write_bool  (resp + pos, 20, true); /* pin_protection */

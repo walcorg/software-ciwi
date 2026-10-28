@@ -1,6 +1,6 @@
 /**
  * @file    menu.h
- * @brief   Motor de menú navegable con click-wheel — WalCorg Fase 3
+ * @brief   Motor de menú navegable con click-wheel — WALCORG Fase 3
  *
  * Motor de menú genérico que:
  *   - Muestra una lista de opciones en el TFT
@@ -17,13 +17,13 @@
  *       { "Ver semilla",   NULL, MENU_ICON_KEY     },
  *       { "Configuracion", NULL, MENU_ICON_SETTINGS},
  *   };
- *   menu_init(&m, "WalCorg", items, 4);
+ *   menu_init(&m, "WALCORG", items, 4);
  *   int selected = menu_run(&m);   // Bloquea hasta selección
  *
  * DISEÑO VISUAL (480×320):
  *
  *   ┌─────────────────────────────────────┐
- *   │         WalCorg — Inicio            │  ← Barra título (azul)
+ *   │         WALCORG — Inicio            │  ← Barra título (azul)
  *   ├─────────────────────────────────────┤
  *   │  ▸  Recibir BTC                     │  ← Ítem seleccionado (resaltado)
  *   ├─────────────────────────────────────┤

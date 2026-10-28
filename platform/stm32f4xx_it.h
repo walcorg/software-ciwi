@@ -1,6 +1,6 @@
 /**
  * @file    stm32f4xx_it.h
- * @brief   Declaraciones de los manejadores de interrupción — WalCorg Fase 1
+ * @brief   Declaraciones de los manejadores de interrupción — WALCORG Fase 1
  *
  * En STM32, cada interrupción tiene un nombre fijo definido en la tabla
  * de vectores (startup_stm32f405xx.s). Si defines una función con ese

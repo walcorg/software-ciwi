@@ -1,6 +1,6 @@
 /**
  * @file    wallet_core.h
- * @brief   Núcleo del wallet Bitcoin — WalCorg Fase 5
+ * @brief   Núcleo del wallet Bitcoin — WALCORG Fase 5
  *
  * Capa de alto nivel sobre la librería crypto de Trezor.
  * Encapsula las operaciones Bitcoin más comunes:

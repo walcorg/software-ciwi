@@ -1,9 +1,9 @@
 /**
  * @file    ui_components.h
- * @brief   Widgets reutilizables de la UI — WalCorg Fase 4
+ * @brief   Widgets reutilizables de la UI — WALCORG Fase 4
  *
  * Biblioteca de componentes visuales que implementan el
- * diseño del tema WalCorg. Cada componente es stateless
+ * diseño del tema WALCORG. Cada componente es stateless
  * (no guarda estado interno) — el llamador decide cuándo
  * y cómo dibujarlo.
  *

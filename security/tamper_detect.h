@@ -1,6 +1,6 @@
 /**
  * @file    tamper_detect.h
- * @brief   Detección de manipulación física y debug — WalCorg Fase 6
+ * @brief   Detección de manipulación física y debug — WALCORG Fase 6
  *
  * Detecta intentos de:
  *   1. Conectar un debugger (SWD/JTAG) mientras el wallet opera

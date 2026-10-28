@@ -1,6 +1,6 @@
 /**
  * @file    input_test.h
- * @brief   Test interactivo del click-wheel y menú — WalCorg Fase 3
+ * @brief   Test interactivo del click-wheel y menú — WALCORG Fase 3
  *
  * Suite de tests que verifican que el click-wheel navega
  * correctamente los menús en el TFT.

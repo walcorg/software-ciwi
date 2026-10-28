@@ -1,6 +1,6 @@
 /**
  * @file    ui_screens.h
- * @brief   Pantallas completas del wallet — WalCorg Fase 4
+ * @brief   Pantallas completas del wallet — WALCORG Fase 4
  *
  * Cada función representa una pantalla completa de la UI.
  * Usan ui_components.h internamente y se integran con

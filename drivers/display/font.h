@@ -1,6 +1,6 @@
 /**
  * @file    font.h / font.c
- * @brief   Fuente bitmap 5×7 para el display TFT — WalCorg Fase 2
+ * @brief   Fuente bitmap 5×7 para el display TFT — WALCORG Fase 2
  *
  * Fuente ASCII completa (32-126) en formato bitmap de 5×7 píxeles.
  * Cada caracter ocupa 5 bytes (1 byte por columna, 7 filas usadas).

@@ -1,6 +1,6 @@
 /**
  * @file    main_phase1.c
- * @brief   Main integrador de la Fase 1 — WalCorg Cold Wallet
+ * @brief   Main integrador de la Fase 1 — WALCORG Cold Wallet
  *
  * ESTE ARCHIVO une todos los módulos de la Fase 1 en un solo
  * programa de verificación que demuestra que el bringup
@@ -38,7 +38,7 @@
  * CRITERIO DE ÉXITO DE LA FASE 1:
  *   ✓ Monitor serial muestra "FASE 1 COMPLETADA"
  *   ✓ LED parpadea a 1Hz (heartbeat)
- *   ✓ "lsusb" muestra "WalCorg Cold Wallet"
+ *   ✓ "lsusb" muestra "WALCORG Cold Wallet"
  *   ✓ "trezorctl list" muestra el dispositivo
  *
  * @license GNU GPL v3
@@ -234,7 +234,7 @@ static uint8_t run_phase1_tests(void) {
 
     if (usb_is_connected()) {
         DEBUG_PRINT("  TEST USB: OK — dispositivo enumerado\r\n");
-        DEBUG_PRINT("  Verificar: lsusb | grep WalCorg\r\n");
+        DEBUG_PRINT("  Verificar: lsusb | grep WALCORG\r\n");
         DEBUG_PRINT("  Verificar: trezorctl list\r\n");
     } else {
         DEBUG_PRINT("  TEST USB: WARN — no enumeró en 10s\r\n");

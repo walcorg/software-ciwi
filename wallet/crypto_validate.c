@@ -1,6 +1,6 @@
 /**
  * @file    crypto_validate.c
- * @brief   Tests de validación crypto — WalCorg Fase 5
+ * @brief   Tests de validación crypto — WALCORG Fase 5
  *
  * Cada test compara la salida de las funciones crypto de Trezor
  * contra vectores de referencia publicados en los BIPs oficiales.
@@ -363,7 +363,7 @@ bool crypto_test_ecdsa(void) {
     priv_key[31] = 0x01;  /* La clave privada más simple: 1 */
 
     /* Mensaje de prueba */
-    const char *message = "WalCorg test message";
+    const char *message = "WALCORG test message";
     uint8_t hash[32];
     sha256_Raw((const uint8_t *)message, strlen(message), hash);
 

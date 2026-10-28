@@ -1,6 +1,6 @@
 /**
  * @file    display.c  (legacy/firmware/display.c — versión MODIFICADA)
- * @brief   Implementación de wrappers oledXxx → tft_xxx — WalCorg Fase 2
+ * @brief   Implementación de wrappers oledXxx → tft_xxx — WALCORG Fase 2
  *
  * Este archivo implementa la capa de compatibilidad entre el
  * código existente de Trezor (que llama oledXxx) y nuestro
@@ -50,11 +50,11 @@
  * ========================================================= */
 
 /** Color de primer plano activo (texto, formas)
- *  Por defecto: blanco del tema WalCorg */
+ *  Por defecto: blanco del tema WALCORG */
 tft_color_t g_fg_color = WALCORG_TEXT;
 
 /** Color de fondo activo
- *  Por defecto: negro oscuro del tema WalCorg */
+ *  Por defecto: negro oscuro del tema WALCORG */
 tft_color_t g_bg_color = WALCORG_BG;
 
 /**
@@ -389,7 +389,7 @@ void oledSetBgColor(tft_color_t color) {
 /**
  * oledResetColors — Restaurar colores por defecto
  *
- * Colores del tema WalCorg:
+ * Colores del tema WALCORG:
  *   Primer plano: blanco claro (WALCORG_TEXT = RGB565(230,230,230))
  *   Fondo: negro oscuro (WALCORG_BG = RGB565(18,18,18))
  */
