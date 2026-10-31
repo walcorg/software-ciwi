@@ -2,7 +2,7 @@ build/
 vendor
 *.o
 tests/host/ciwi_host
-tests/host/ciwi-keystore.bin
+tests/host/ciwi-keystore.*
 tests/host/vectors.json
 tests/host/model.log
 tests/host/model.pid
