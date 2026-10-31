@@ -7,12 +7,14 @@
 #include <string.h>
 
 #include "ciwi_log.h"
+#include "tr01_pin.h"
 #include "tr01_platform.h"
 
 /* trezor-crypto */
 #include "bignum.h"
 #include "ecdsa.h"
 #include "ed25519-donna/ed25519.h"
+#include "hmac.h"
 #include "memzero.h"
 #include "nist256p1.h"
 #include "sha3.h"
@@ -161,39 +163,220 @@ static lt_ret_t load_anchor_key(ciwi_tr01_t *t)
     return LT_OK;
 }
 
-/* ================================================================ start (every boot) */
+/* ================================================================ threat model
+ *
+ * Side-channel attacks need many operations with the SAME secret. ECDSA signatures use a fresh
+ * nonce each time, but two operations here repeat a fixed key:
+ *   - the X25519 handshake of every secure session, with the chip's static key (inside TROPIC01)
+ *     and with the host's pairing key (on the STM32, computed by trezor-crypto WITHOUT scalar
+ *     blinding);
+ *   - a pairing key stored in the STM32 flash can also be read out if RDP is bypassed.
+ * Roche, Imbert and Lomné show that scalar blinding with R = 64 random bits no longer protects
+ * curves whose order is close to a power of 2 (secp256k1, Curve25519, ...): an attacker who can
+ * measure about 10 000 operations with the same key recovers it; R must exceed half the key size.
+ *
+ *   T. Roche, L. Imbert, V. Lomné, "Side-channel Attacks on Blinded Scalar Multiplications
+ *   Revisited", CARDIS 2019 (NinjaLab / LIRMM). https://eprint.iacr.org/2019/1220
+ *
+ * So the STM32 must not hold, in usable form, a key that can sign, and must not let anyone repeat
+ * key operations freely. v0.5 splits the host keys:
+ *   SH2 (boot)    plain in flash; the access policy lets its session do nothing but check the
+ *                 PIN with MAC-and-Destroy (10 attempts in total, enforced by TROPIC01).
+ *   SH1 (signing) stored encrypted with a key released by the correct PIN; only its session may
+ *                 sign with the anchor key, move the claim counter or change the policy.
+ * Extracting SH2 (from flash or by side channel) gives at most 10 PIN guesses. SH1 is only in RAM
+ * after the PIN, and its handshake runs once per unlock, not on demand.
+ * Not covered here: the blinding inside TROPIC01 (to confirm with Tropic Square: R > 128 bits for
+ * X25519 and P-256) and the Bitcoin keys of the wallet (future work).
+ */
+
+/* ================================================================ host keys */
+
+#define SH1_REC_VER  1
+#define SH1_REC_LEN  (1 + 16 + 32 + 32 + 32) /* ver, nonce, ciphertext, pub, tag */
+
+/** Wrapping key for SH1, domain-separated from other uses of the PIN key (the seed). */
+static void wrap_key(const uint8_t pin_key[32], uint8_t k[32])
+{
+    static const char label[] = "CiWi SH1 wrap v1";
+    hmac_sha256(pin_key, 32, (const uint8_t *)label, sizeof(label) - 1, k);
+}
+
+static void wrap_pad_tag(const uint8_t k[32], const uint8_t *rec, uint8_t pad[32], uint8_t tag[32])
+{
+    uint8_t buf[3 + 1 + 16 + 32 + 32];
+    memcpy(buf, "enc", 3);
+    memcpy(buf + 3, rec + 1, 16);                              /* nonce */
+    hmac_sha256(k, 32, buf, 3 + 16, pad);
+    memcpy(buf, "mac", 3);
+    memcpy(buf + 3, rec, 1 + 16 + 32 + 32);                    /* ver, nonce, ct, pub */
+    hmac_sha256(k, 32, buf, sizeof(buf), tag);
+    memzero(buf, sizeof(buf));
+}
+
+static lt_ret_t sh1_save(ciwi_tr01_t *t, const uint8_t pin_key[32], const uint8_t priv[32],
+                         const uint8_t pub[32])
+{
+    uint8_t rec[SH1_REC_LEN], k[32], pad[32], tag[32];
+    rec[0] = SH1_REC_VER;
+    CHECK(ciwi_tr01_random(t, rec + 1, 16));
+    memcpy(rec + 49, pub, 32);
+    wrap_key(pin_key, k);
+    wrap_pad_tag(k, rec, pad, tag);                 /* pad uses only the nonce */
+    for (int i = 0; i < 32; i++) rec[17 + i] = priv[i] ^ pad[i];
+    wrap_pad_tag(k, rec, pad, tag);                 /* tag covers the ciphertext */
+    memcpy(rec + 81, tag, 32);
+    bool ok = tr01_keystore_save(TR01_KS_SH1, rec, sizeof(rec));
+    memzero(k, sizeof(k));
+    memzero(pad, sizeof(pad));
+    return ok ? LT_OK : LT_FAIL;
+}
+
+static lt_ret_t sh1_load(const uint8_t pin_key[32], uint8_t priv[32], uint8_t pub[32])
+{
+    uint8_t rec[SH1_REC_LEN], k[32], pad[32], tag[32];
+    uint16_t n = 0;
+    if (!tr01_keystore_load(TR01_KS_SH1, rec, sizeof(rec), &n) || n != sizeof(rec) ||
+        rec[0] != SH1_REC_VER) {
+        return LT_FAIL;
+    }
+    wrap_key(pin_key, k);
+    wrap_pad_tag(k, rec, pad, tag);
+    uint8_t diff = 0;
+    for (int i = 0; i < 32; i++) diff |= tag[i] ^ rec[81 + i];
+    if (diff == 0) {
+        for (int i = 0; i < 32; i++) priv[i] = rec[17 + i] ^ pad[i];
+        memcpy(pub, rec + 49, 32);
+    }
+    memzero(k, sizeof(k));
+    memzero(pad, sizeof(pad));
+    return diff == 0 ? LT_OK : LT_CRYPTO_ERR;
+}
+
+static bool boot_load(uint8_t priv[32], uint8_t pub[32])
+{
+    uint8_t rec[64];
+    uint16_t n = 0;
+    bool ok = tr01_keystore_load(TR01_KS_BOOT, rec, sizeof(rec), &n) && n == sizeof(rec);
+    if (ok) {
+        memcpy(priv, rec, 32);
+        memcpy(pub, rec + 32, 32);
+    }
+    memzero(rec, sizeof(rec));
+    return ok;
+}
+
+/** New X25519 key: TROPIC01 TRNG XOR STM32 RNG, so a weakness in one source is not enough. */
+static lt_ret_t new_x25519(ciwi_tr01_t *t, uint8_t priv[32], uint8_t pub[32])
+{
+    uint8_t mcu[32];
+    CHECK(lt_random_value_get(&t->lt, priv, 32));
+    if (!tr01_platform_random(mcu, sizeof(mcu))) return LT_FAIL;
+    for (int i = 0; i < 32; i++) priv[i] ^= mcu[i];
+    memzero(mcu, sizeof(mcu));
+    priv[0] &= 248;
+    priv[31] &= 127;
+    priv[31] |= 64;
+    curve25519_scalarmult_basepoint(pub, priv);
+    return LT_OK;
+}
+
+/* ================================================================ boot, unlock, lock */
 
 lt_ret_t ciwi_tr01_start(ciwi_tr01_t *t)
 {
-    uint8_t priv[TR01_PAIRING_KEY_LEN], pub[TR01_PAIRING_KEY_LEN];
-
+    uint8_t priv[32], pub[32];
     t->anchor_ready = false;
-    if (!tr01_keystore_load(priv, pub)) {
+    if (!boot_load(priv, pub)) {
         t->state = CIWI_TR01_STATE_NEW;
         return LT_FAIL;
     }
-    lt_ret_t r = session_open(t, priv, pub, CIWI_TR01_PAIRING_SLOT);
+    lt_ret_t r = session_open(t, priv, pub, CIWI_TR01_BOOT_SLOT);
     memzero(priv, sizeof(priv));
     if (r != LT_OK) {
-        CIWI_LOG("[TR01] session with SH1 refused: %s\r\n", lt_ret_verbose(r));
+        CIWI_LOG("[TR01] boot session (SH2) refused: %s\r\n", lt_ret_verbose(r));
         t->state = CIWI_TR01_STATE_FOREIGN;
         return r;
     }
-    t->state = CIWI_TR01_STATE_READY;
+    t->state = CIWI_TR01_STATE_LOCKED;
+    return LT_OK;
+}
 
-    r = load_anchor_key(t);
+/** From LOCKED with the SH1 key in RAM: open the signing session and load the anchor key. */
+static lt_ret_t enter_ready(ciwi_tr01_t *t, const uint8_t priv[32], const uint8_t pub[32])
+{
+    CHECK(session_open(t, priv, pub, CIWI_TR01_SIGN_SLOT));
+    t->state = CIWI_TR01_STATE_READY;
+    lt_ret_t r = load_anchor_key(t);
     if (r == LT_L3_INVALID_KEY || r == LT_L3_SLOT_EMPTY) {
-        CIWI_LOG("[TR01] no anchor key yet (run provisioning)\r\n");
+        CIWI_LOG("[TR01] no anchor key yet\r\n");
     }
+    return r;
+}
+
+lt_ret_t ciwi_tr01_unlock(ciwi_tr01_t *t, const char *pin, const uint8_t *bind, uint8_t bind_len,
+                          uint8_t *attempts_left)
+{
+    uint8_t pin_key[CIWI_PIN_KEY_LEN], priv[32], pub[32];
+    if (t->state != CIWI_TR01_STATE_LOCKED) return LT_HOST_NO_SESSION;
+
+    lt_ret_t r = ciwi_pin_check(t, pin, bind, bind_len, pin_key);
+    if (attempts_left) ciwi_pin_attempts_left(t, attempts_left);
+    if (r != LT_OK) return r;
+
+    r = sh1_load(pin_key, priv, pub);
+    memzero(pin_key, sizeof(pin_key));
+    if (r != LT_OK) {
+        CIWI_LOG("[TR01] SH1 record missing or damaged\r\n");
+        return r;
+    }
+    r = enter_ready(t, priv, pub);
+    memzero(priv, sizeof(priv));
+    return r;
+}
+
+lt_ret_t ciwi_tr01_lock(ciwi_tr01_t *t)
+{
+    session_close(t);
+    t->anchor_ready = false;
+    return ciwi_tr01_start(t);
+}
+
+lt_ret_t ciwi_tr01_attempts_left(ciwi_tr01_t *t, uint8_t *left)
+{
+    *left = 0;
+    if (t->state != CIWI_TR01_STATE_LOCKED) return LT_HOST_NO_SESSION; /* SH2 reads it */
+    return ciwi_pin_attempts_left(t, left);
+}
+
+lt_ret_t ciwi_tr01_change_pin(ciwi_tr01_t *t, const char *old_pin, const char *new_pin,
+                              const uint8_t *bind, uint8_t bind_len)
+{
+    uint8_t pin_key[CIWI_PIN_KEY_LEN], priv[32], pub[32];
+    if (t->state != CIWI_TR01_STATE_LOCKED) CHECK(ciwi_tr01_lock(t));
+    /* Same secret, same pin_key: the encrypted SH1 record stays valid. */
+    lt_ret_t r = ciwi_pin_change(t, old_pin, new_pin, bind, bind_len, pin_key);
+    if (r != LT_OK) return r;
+    r = sh1_load(pin_key, priv, pub);
+    memzero(pin_key, sizeof(pin_key));
+    if (r == LT_OK) r = enter_ready(t, priv, pub);
+    memzero(priv, sizeof(priv));
     return r;
 }
 
 /* ================================================================ provisioning */
 
-/** CiWi access policy: only the CiWi session (SH1) may use the anchor key, counter and PIN. */
+/**
+ * CiWi access policy (R-config).
+ *   SH1 (signing): anchor key, claim counter, pairing-key and policy changes.
+ *   SH2 (boot):    PIN only (MAC-and-Destroy slots, user data 384-511).
+ *   SH0 (factory, public key): nothing beyond what every session may do.
+ *   Every session: ping, random numbers, read public keys and counters.
+ */
 static void ciwi_r_config(struct lt_config_t *c)
 {
     const uint32_t SH1 = LT_SESSION_SH1_HAS_ACCESS;
+    const uint32_t SH2 = LT_SESSION_SH2_HAS_ACCESS;
     const uint32_t ALL = LT_SESSION_SH0_HAS_ACCESS | LT_SESSION_SH1_HAS_ACCESS |
                          LT_SESSION_SH2_HAS_ACCESS | LT_SESSION_SH3_HAS_ACCESS;
 
@@ -206,155 +389,146 @@ static void ciwi_r_config(struct lt_config_t *c)
     c->obj[TR01_CFG_UAP_EDDSA_SIGN_IDX] &= ~LT_TO_ECC_KEY_SLOT_0_7(ALL);
     c->obj[TR01_CFG_UAP_ECC_KEY_ERASE_IDX] &= ~LT_TO_ECC_KEY_SLOT_0_7(ALL);
     c->obj[TR01_CFG_UAP_ECC_KEY_ERASE_IDX] |= LT_TO_ECC_KEY_SLOT_0_7(SH1);
-    /* Reading the public key stays open to every session. */
     c->obj[TR01_CFG_UAP_ECC_KEY_READ_IDX] |= LT_TO_ECC_KEY_SLOT_0_7(ALL);
 
-    /* Monotonic counters 0-3: SH1 only. */
+    /* Monotonic counters 0-3: change only from SH1. */
     c->obj[TR01_CFG_UAP_MCOUNTER_INIT_IDX] &= ~LT_TO_MCOUNTER_0_3(ALL);
     c->obj[TR01_CFG_UAP_MCOUNTER_INIT_IDX] |= LT_TO_MCOUNTER_0_3(SH1);
     c->obj[TR01_CFG_UAP_MCOUNTER_UPDATE_IDX] &= ~LT_TO_MCOUNTER_0_3(ALL);
     c->obj[TR01_CFG_UAP_MCOUNTER_UPDATE_IDX] |= LT_TO_MCOUNTER_0_3(SH1);
     c->obj[TR01_CFG_UAP_MCOUNTER_GET_IDX] |= LT_TO_MCOUNTER_0_3(ALL);
 
-    /* MAC-and-Destroy slots 0-31 (PIN attempts): SH1 only. */
+    /* PIN: MAC-and-Destroy slots 0-31 and user data 384-511 (PIN state in 511): SH2 only. */
     c->obj[TR01_CFG_UAP_MAC_AND_DESTROY_IDX] &= ~LT_TO_MACANDD_SLOT_0_31(ALL);
-    c->obj[TR01_CFG_UAP_MAC_AND_DESTROY_IDX] |= LT_TO_MACANDD_SLOT_0_31(SH1);
-
-    /* User data slots 384-511 (PIN state lives in 511): SH1 only. */
+    c->obj[TR01_CFG_UAP_MAC_AND_DESTROY_IDX] |= LT_TO_MACANDD_SLOT_0_31(SH2);
     c->obj[TR01_CFG_UAP_R_MEM_DATA_WRITE_IDX] &= ~(ALL << 24);
-    c->obj[TR01_CFG_UAP_R_MEM_DATA_WRITE_IDX] |= (SH1 << 24);
+    c->obj[TR01_CFG_UAP_R_MEM_DATA_WRITE_IDX] |= (SH2 << 24);
     c->obj[TR01_CFG_UAP_R_MEM_DATA_READ_IDX] &= ~(ALL << 24);
-    c->obj[TR01_CFG_UAP_R_MEM_DATA_READ_IDX] |= (SH1 << 24);
+    c->obj[TR01_CFG_UAP_R_MEM_DATA_READ_IDX] |= (SH2 << 24);
     c->obj[TR01_CFG_UAP_R_MEM_DATA_ERASE_IDX] &= ~(ALL << 24);
-    c->obj[TR01_CFG_UAP_R_MEM_DATA_ERASE_IDX] |= (SH1 << 24);
+    c->obj[TR01_CFG_UAP_R_MEM_DATA_ERASE_IDX] |= (SH2 << 24);
 
-    /* Ping and random numbers: every session. R-config write/erase: unchanged, so the policy can
-     * always be rewritten at the bench. */
+    /* Pairing keys: write and invalidate only from SH1. Reading public halves stays open. */
+    c->obj[TR01_CFG_UAP_PAIRING_KEY_WRITE_IDX] =
+        LT_TO_PAIRING_KEY_SH0(SH1) | LT_TO_PAIRING_KEY_SH1(SH1) | LT_TO_PAIRING_KEY_SH2(SH1) |
+        LT_TO_PAIRING_KEY_SH3(SH1);
+    c->obj[TR01_CFG_UAP_PAIRING_KEY_INVALIDATE_IDX] =
+        LT_TO_PAIRING_KEY_SH0(SH1) | LT_TO_PAIRING_KEY_SH1(SH1) | LT_TO_PAIRING_KEY_SH2(SH1) |
+        LT_TO_PAIRING_KEY_SH3(SH1);
+
+    /* The policy itself: only SH1 may rewrite it. Without this, the public factory key SH0
+     * could erase the policy and give itself the anchor key. */
+    c->obj[TR01_CFG_UAP_R_CONFIG_WRITE_ERASE_IDX] &= ~ALL;
+    c->obj[TR01_CFG_UAP_R_CONFIG_WRITE_ERASE_IDX] |= SH1;
+
     c->obj[TR01_CFG_UAP_PING_IDX] |= ALL;
     c->obj[TR01_CFG_UAP_RANDOM_VALUE_GET_IDX] |= ALL;
 }
 
-static lt_ret_t provision_pairing_key(ciwi_tr01_t *t)
+static lt_ret_t slot_must_be_empty(ciwi_tr01_t *t, lt_pkey_index_t slot)
 {
-    uint8_t priv[TR01_PAIRING_KEY_LEN], pub[TR01_PAIRING_KEY_LEN];
-    uint8_t mcu_rnd[TR01_PAIRING_KEY_LEN];
-    uint8_t slot_pub[TR01_PAIRING_KEY_LEN];
-
-    lt_ret_t r = lt_pairing_key_read(&t->lt, slot_pub, CIWI_TR01_PAIRING_SLOT);
+    uint8_t pub[32];
+    lt_ret_t r = lt_pairing_key_read(&t->lt, pub, slot);
     if (r == LT_OK) {
-        CIWI_LOG("[TR01] pairing slot 1 is already written, but not with the key in this STM32.\r\n");
-        CIWI_LOG("[TR01] Pairing slots are write-once: nothing was changed.\r\n");
+        CIWI_LOG("[TR01] pairing slot %d is already written. Slots are write-once: nothing was "
+                 "changed.\r\n", (int)slot);
         return LT_L3_SLOT_NOT_EMPTY;
     }
-    if (r != LT_L3_SLOT_EMPTY) {
-        CIWI_LOG("[TR01] pairing slot 1 read: %s\r\n", lt_ret_verbose(r));
+    return r == LT_L3_SLOT_EMPTY ? LT_OK : r;
+}
+
+lt_ret_t ciwi_tr01_provision(ciwi_tr01_t *t, const char *pin, const uint8_t *bind,
+                             uint8_t bind_len)
+{
+    uint8_t sh1_priv[32], sh1_pub[32], boot[64], pin_key[CIWI_PIN_KEY_LEN];
+    lt_ret_t r;
+
+    if (t->state != CIWI_TR01_STATE_NEW) {
+        CIWI_LOG("[TR01] provisioning needs a CiWi without keys (state NEW)\r\n");
+        return LT_FAIL;
+    }
+
+    CIWI_LOG("[TR01] step 1: session with factory key SH0\r\n");
+    r = session_open(t, SH0_PRIV, SH0_PUB, TR01_PAIRING_KEY_SLOT_INDEX_0);
+    if (r != LT_OK) {
+        CIWI_LOG("[TR01] SH0 refused (%s). Engineering sample? Build with "
+                 "CIWI_TR01_SH0_ENG_SAMPLE=1\r\n", lt_ret_verbose(r));
+        return r;
+    }
+    if ((r = slot_must_be_empty(t, CIWI_TR01_SIGN_SLOT)) != LT_OK ||
+        (r = slot_must_be_empty(t, CIWI_TR01_BOOT_SLOT)) != LT_OK) {
+        session_close(t);
         return r;
     }
 
-    /* Private key = TROPIC01 TRNG XOR STM32 RNG: a weakness in one source is not enough. */
-    CHECK(lt_random_value_get(&t->lt, priv, sizeof(priv)));
-    if (!tr01_platform_random(mcu_rnd, sizeof(mcu_rnd))) {
-        memzero(priv, sizeof(priv));
-        return LT_FAIL;
-    }
-    for (unsigned i = 0; i < sizeof(priv); i++) priv[i] ^= mcu_rnd[i];
-    memzero(mcu_rnd, sizeof(mcu_rnd));
-    /* X25519 clamping, then the public key. */
-    priv[0] &= 248;
-    priv[31] &= 127;
-    priv[31] |= 64;
-    curve25519_scalarmult_basepoint(pub, priv);
-
-    /* Save first: if the write to TROPIC01 succeeded but the flash write failed, the slot would
-     * be lost for good. */
-    if (!tr01_keystore_save(priv, pub)) {
-        memzero(priv, sizeof(priv));
-        CIWI_LOG("[TR01] could not store the pairing key in flash\r\n");
-        return LT_FAIL;
-    }
-    memzero(priv, sizeof(priv));
-    CHECK(lt_pairing_key_write(&t->lt, pub, CIWI_TR01_PAIRING_SLOT));
-    ciwi_log_hex("[TR01] SH1 public key  : ", pub, sizeof(pub));
-    return LT_OK;
-}
-
-lt_ret_t ciwi_tr01_provision(ciwi_tr01_t *t)
-{
-    lt_ret_t r = ciwi_tr01_start(t);
-    if (r == LT_OK) {
-        CIWI_LOG("[TR01] already provisioned\r\n");
-        return LT_OK;
-    }
-
-    if (t->state != CIWI_TR01_STATE_READY) {
-        CIWI_LOG("[TR01] step 1: session with factory key SH0\r\n");
-        r = session_open(t, SH0_PRIV, SH0_PUB, TR01_PAIRING_KEY_SLOT_INDEX_0);
-        if (r != LT_OK) {
-            CIWI_LOG("[TR01] SH0 refused (%s). Engineering sample? Build with "
-                     "CIWI_TR01_SH0_ENG_SAMPLE=1\r\n",
-                     lt_ret_verbose(r));
-            return r;
-        }
-
-        CIWI_LOG("[TR01] step 2: CiWi pairing key into slot 1\r\n");
-        /* Safe in the FOREIGN state too: provision_pairing_key() refuses if slot 1 is already
-         * written, and only replaces the stored key when the slot is still empty (e.g. the chip
-         * write failed after the flash save). The stored key is never erased here. */
-        r = provision_pairing_key(t);
-        if (r != LT_OK) {
-            session_close(t);
-            return r;
-        }
+    CIWI_LOG("[TR01] step 2: boot key (slot 2) and signing key (slot 1)\r\n");
+    if ((r = new_x25519(t, boot, boot + 32)) != LT_OK) goto fail;
+    if ((r = new_x25519(t, sh1_priv, sh1_pub)) != LT_OK) goto fail;
+    /* Boot key saved before its slot is written: a write-once slot is never left without its key. */
+    if (!tr01_keystore_save(TR01_KS_BOOT, boot, sizeof(boot))) { r = LT_FAIL; goto fail; }
+    if ((r = lt_pairing_key_write(&t->lt, boot + 32, CIWI_TR01_BOOT_SLOT)) != LT_OK) goto fail;
+    if ((r = lt_pairing_key_write(&t->lt, sh1_pub, CIWI_TR01_SIGN_SLOT)) != LT_OK) goto fail;
+    ciwi_log_hex("[TR01] SH2 boot pub    : ", boot + 32, 32);
+    ciwi_log_hex("[TR01] SH1 signing pub : ", sh1_pub, 32);
 
 #if CIWI_TR01_APPLY_RCONFIG
-        CIWI_LOG("[TR01] step 3: CiWi access policy (R-config)\r\n");
+    CIWI_LOG("[TR01] step 3: CiWi access policy (R-config)\r\n");
+    {
         struct lt_config_t cfg;
-        CHECK(lt_read_whole_R_config(&t->lt, &cfg));
+        if ((r = lt_read_whole_R_config(&t->lt, &cfg)) != LT_OK) goto fail;
         ciwi_r_config(&cfg);
-        CHECK(lt_r_config_erase(&t->lt));
-        CHECK(lt_write_whole_R_config(&t->lt, &cfg));
-        session_close(t);
-        /* The R-config takes effect after a reboot. */
-        CHECK(lt_reboot(&t->lt, TR01_REBOOT));
+        if ((r = lt_r_config_erase(&t->lt)) != LT_OK) goto fail;
+        if ((r = lt_write_whole_R_config(&t->lt, &cfg)) != LT_OK) goto fail;
+    }
+    session_close(t);
+    if ((r = lt_reboot(&t->lt, TR01_REBOOT)) != LT_OK) goto fail; /* the policy applies now */
 #else
-        (void)ciwi_r_config;
-        CIWI_LOG("[TR01] step 3: R-config left unchanged (CIWI_TR01_APPLY_RCONFIG=0)\r\n");
-        session_close(t);
+    (void)ciwi_r_config;
+    CIWI_LOG("[TR01] step 3: R-config NOT written (CIWI_TR01_APPLY_RCONFIG=0): the PIN does not "
+             "protect the anchor key\r\n");
+    session_close(t);
 #endif
 
-        CIWI_LOG("[TR01] step 4: session with SH1\r\n");
-        r = ciwi_tr01_start(t);
-        if (t->state != CIWI_TR01_STATE_READY) return r;
-    }
+    CIWI_LOG("[TR01] step 4: PIN (MAC-and-Destroy) in the boot session\r\n");
+    if ((r = session_open(t, boot, boot + 32, CIWI_TR01_BOOT_SLOT)) != LT_OK) goto fail;
+    t->state = CIWI_TR01_STATE_LOCKED;
+    if ((r = ciwi_pin_set(t, pin, bind, bind_len, pin_key)) != LT_OK) goto fail;
+    r = sh1_save(t, pin_key, sh1_priv, sh1_pub);
+    memzero(pin_key, sizeof(pin_key));
+    if (r != LT_OK) goto fail;
 
-    if (!t->anchor_ready) {
-        CIWI_LOG("[TR01] step 4: anchor key (P-256) in ECC slot %d\r\n", (int)CIWI_TR01_ANCHOR_SLOT);
-        CHECK(lt_ecc_key_generate(&t->lt, CIWI_TR01_ANCHOR_SLOT, TR01_CURVE_P256));
-        CHECK(load_anchor_key(t));
+    CIWI_LOG("[TR01] step 5: anchor key (P-256, ECC slot %d) and claim counter\r\n",
+             (int)CIWI_TR01_ANCHOR_SLOT);
+    r = enter_ready(t, sh1_priv, sh1_pub);
+    if (r != LT_OK && !t->anchor_ready) {
+        if ((r = lt_ecc_key_generate(&t->lt, CIWI_TR01_ANCHOR_SLOT, TR01_CURVE_P256)) != LT_OK) {
+            goto fail;
+        }
+        if ((r = load_anchor_key(t)) != LT_OK) goto fail;
     }
-
-    uint32_t mc;
-    r = lt_mcounter_get(&t->lt, CIWI_TR01_CLAIM_COUNTER, &mc);
-    if (r != LT_OK) {
-        CIWI_LOG("[TR01] step 4: claim counter\r\n");
-        CHECK(lt_mcounter_init(&t->lt, CIWI_TR01_CLAIM_COUNTER, TR01_MCOUNTER_VALUE_MAX));
+    {
+        uint32_t mc;
+        if (lt_mcounter_get(&t->lt, CIWI_TR01_CLAIM_COUNTER, &mc) != LT_OK &&
+            (r = lt_mcounter_init(&t->lt, CIWI_TR01_CLAIM_COUNTER, TR01_MCOUNTER_VALUE_MAX)) !=
+                LT_OK) {
+            goto fail;
+        }
     }
 
 #if CIWI_TR01_INVALIDATE_SH0
-    CIWI_LOG("[TR01] step 5: invalidating factory key SH0 (irreversible)\r\n");
-    {
-        uint8_t priv[TR01_PAIRING_KEY_LEN], pub[TR01_PAIRING_KEY_LEN];
-        bool ok = tr01_keystore_load(priv, pub);
-        memzero(priv, sizeof(priv));
-        if (!ok) return LT_FAIL;  /* never invalidate SH0 without a working SH1 key */
-    }
-    CHECK(lt_pairing_key_invalidate(&t->lt, TR01_PAIRING_KEY_SLOT_INDEX_0));
+    CIWI_LOG("[TR01] step 6: invalidating factory key SH0 (irreversible)\r\n");
+    if ((r = lt_pairing_key_invalidate(&t->lt, TR01_PAIRING_KEY_SLOT_INDEX_0)) != LT_OK) goto fail;
 #else
-    CIWI_LOG("[TR01] step 5: factory key SH0 kept (CIWI_TR01_INVALIDATE_SH0=0)\r\n");
+    CIWI_LOG("[TR01] step 6: factory key SH0 kept (CIWI_TR01_INVALIDATE_SH0=0)\r\n");
 #endif
 
     CIWI_LOG("[TR01] provisioning complete\r\n");
-    return LT_OK;
+    r = LT_OK;
+fail:
+    if (r != LT_OK) CIWI_LOG("[TR01] provisioning stopped: %s\r\n", lt_ret_verbose(r));
+    memzero(sh1_priv, sizeof(sh1_priv));
+    memzero(boot, sizeof(boot));
+    return r;
 }
 
 /* ================================================================ anchor key use */

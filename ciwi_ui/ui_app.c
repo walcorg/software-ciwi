@@ -587,10 +587,11 @@ static int run_settings(void)
             {ui_str(S_BRIGHTNESS), bright, false},
             {ui_str(S_AUTOLOCK), lock, false},
             {ui_str(S_LANGUAGE), ui_str(S_LANG_NAME), false},
+            {ui_str(S_CHANGE_PIN), NULL, A->change_pin == NULL},
             {ui_str(S_INFO), NULL, false},
         };
         ui_src_t src = UI_SRC_BUTTON;
-        int r = run_list(ui_str(S_SETTINGS), true, items, 6, &sel, ui_str(S_HELP_LIST), &src);
+        int r = run_list(ui_str(S_SETTINGS), true, items, 7, &sel, ui_str(S_HELP_LIST), &src);
         if (r < 0) return r;
         switch (r) {
         case 0:
@@ -604,7 +605,12 @@ static int run_settings(void)
         case 2: S.brightness = (uint8_t)(S.brightness % 5 + 1); break;
         case 3: S.autolock_min = S.autolock_min == 1 ? 5 : S.autolock_min == 5 ? 15 : 1; break;
         case 4: S.lang = S.lang == UI_LANG_ES ? UI_LANG_EN : UI_LANG_ES; break;
-        case 5: show_lines(ui_str(S_INFO), A->identity_lines ? A->identity_lines() : NULL); break;
+        case 5:
+            if (A->change_pin) A->change_pin();
+            continue;                       /* nothing in the settings changed */
+        case 6:
+            show_lines(ui_str(S_INFO), A->identity_lines ? A->identity_lines() : NULL);
+            continue;
         }
         apply_settings();
     }

@@ -4,8 +4,10 @@ Test firmware for the **CiWi** cold wallet (WALCORG) on an **STM32F405RGT6** boa
 based on a fork of the Trezor firmware. Version 0.2 made the original draft build and boot on the
 board. Version 0.3 added phase 7: the TROPIC01 secure element and the
 [Anchor Protocol](https://github.com/walcorg/anchor-protocol) (see [below](#phase-7-tropic01-and-the-anchor-protocol)).
-**Version 0.4 adds phase 8: the CiWi interface** — portrait screen, click-wheel navigation, hold to
-sign, optional touch (see [below](#phase-8-the-ciwi-interface)).
+Version 0.4 added phase 8: the CiWi interface (portrait screen, click-wheel navigation, hold to
+sign, optional touch; see [below](#phase-8-the-ciwi-interface)). **Version 0.5 makes the PIN guard
+the signing key**: without the right PIN the STM32 holds nothing that can sign
+(see [`SECURITY.md`](SECURITY.md)).
 Full list of changes: [`CHANGES.md`](CHANGES.md).
 
 All 8 phases and the LED test build with `arm-none-eabi-gcc 13.2`. Prebuilt binaries are in `dist/`.
@@ -127,6 +129,7 @@ Source-code comments from the original draft are mostly in Spanish; new code (ph
 - **Touch:** `touch_xpt2046.h` was reconstructed because it was missing; the IRQ pin (PC7) is an assumption.
 - **TROPIC01 on hardware:** phase 7 passes against the TROPIC01 model, not yet on a real chip; the
   SPI2 port and the wiring are the parts still to prove on the bench.
+- **Security:** see [`SECURITY.md`](SECURITY.md) for the threat model and open items.
 - **Wallet integration:** phases 5 and 6 still keep the PIN with PBKDF2 in the STM32 flash. Moving the
   wallet to the MAC-and-Destroy PIN (`tropic/tr01_pin.h`) and wrapping the seed with its key is the next step.
 - **Anchor Protocol:** messages are hashed, checked, confirmed on screen and signed; the USB messages
@@ -145,19 +148,22 @@ trezor-crypto backend, so no second crypto library is added.
 
 | TROPIC01 resource | CiWi use |
 | --- | --- |
-| Pairing key slot 0 (SH0) | Factory key, used once at the bench to provision slot 1 |
-| Pairing key slot 1 (SH1) | The CiWi's own key; private half in the STM32 flash (NORCOW) |
+| Pairing key slot 0 (SH0) | Factory key, used once at the bench to provision slots 1 and 2 |
+| Pairing key slot 1 (SH1) | Signing key: the only session that may use the anchor key and the counter. Stored **encrypted with the PIN key** |
+| Pairing key slot 2 (SH2) | Boot key: its session can only check the PIN |
 | ECC key slot 0 | P-256 **anchor key**, generated inside the chip; signs Claim, Bind and NftClaim |
 | Monotonic counter 0 | `ciwiCounter` of the Claim messages |
 | MAC-and-Destroy slots 0-9, user data slot 511 | PIN with 10 attempts, bound to the STM32 unique ID |
 
 **First run.** The UART shows `Not provisioned`. Hold KEY for 3 s. The firmware opens a session with
-the factory key, writes a new pairing key (TROPIC01 TRNG XOR STM32 RNG) to slot 1, generates the anchor
-key and initialises the counter. It prints the anchor public key and the `ciwiId`
-(`keccak256(curve ‖ X ‖ Y)`), which are what gets registered on walcorg.com.
+the factory key, writes a boot key (slot 2) and a signing key (slot 1), both TROPIC01 TRNG XOR STM32
+RNG, writes the CiWi access policy, sets the **test PIN 2468** with MAC-and-Destroy, stores the signing
+key encrypted with the PIN key, generates the anchor key and initialises the counter. It prints the
+anchor public key and the `ciwiId` (`keccak256(curve ‖ X ‖ Y)`), which are what gets registered on
+walcorg.com. Phase 8 provisions with the owner's PIN instead.
 
-**Then, on every boot:** session with SH1, ping, random numbers, a signature, the PIN test and the
-Anchor self-test. The self-test uses a **test shield key compiled into the firmware** (a real shield
+**Then, on every boot:** boot session (LOCKED), unlock with the test PIN, ping, random numbers, a
+signature, a wrong PIN and the right one, and the Anchor self-test. The self-test uses a **test shield key compiled into the firmware** (a real shield
 signs inside its own TROPIC01): the CiWi verifies a CaptureReceipt, a Bind and an NFT WindowRecord,
 waits for a KEY press for each one, and signs with TROPIC01. All signatures are low-s and are verified
 before they leave the chip driver.
@@ -177,9 +183,8 @@ cd tests/host && npm install && node verify.js vectors.json
 | Option | Default | Effect |
 | --- | --- | --- |
 | `-DCIWI_TR01_SH0_ENG_SAMPLE=1` | 0 | Engineering-sample chip (different factory key) |
-| `-DCIWI_TR01_APPLY_RCONFIG=1` | 0 | Write the CiWi access policy: anchor key, counter and PIN usable only from SH1, key import disabled. Reversible |
-| `-DCIWI_TR01_INVALIDATE_SH0=1` | 0 | **Irreversible.** Disables the factory key, so only this STM32 can use the chip. Never on a dev board |
-| `-DCIWI_PHASE7_PIN_TEST=0` | 1 | Skip the PIN test (it replaces any PIN state with the test PIN 2468) |
+| `-DCIWI_TR01_APPLY_RCONFIG=0` | 1 | Do not write the CiWi access policy (development only: then any session can sign and the PIN does not protect the anchor key) |
+| `-DCIWI_TR01_INVALIDATE_SH0=1` | 0 | **Irreversible.** Disables the factory key. Not needed for the policy; never on a dev board |
 
 ### Test without hardware
 
@@ -189,12 +194,14 @@ TROPIC01 model ([ts-tvl](https://github.com/tropicsquare/ts-tvl)):
 ```bash
 pip install https://github.com/tropicsquare/ts-tvl/releases/download/2.7/tvl-2.7-py3-none-any.whl
 ./tools/fetch_vendor.sh
-cd tests/host && npm install && make test     # make test-rconfig: with the access policy
+cd tests/host && npm install && make test     # make test-no-policy: without the access policy
 ```
 
-Current result on the model: `make test` 53/53 (provisioning, session, signatures, counter, PIN with
-lock-out, Anchor messages, a wrong key in the MCU) and 16/16 in `verify.js`; `make test-rconfig` 59/59, including checks that
-the factory session can no longer sign, advance the counter or erase the anchor key.
+Current result on the model: `make test` 63/63 and 16/16 in `verify.js`. It covers provisioning,
+LOCKED until the PIN, signatures and counter, the access policy enforced by the chip (neither the
+factory key nor the boot key can sign, move the counter, erase the anchor key or rewrite the policy),
+PIN change keeping the same anchor key, a damaged or foreign key record, and the lock-out after 10
+wrong PINs.
 
 ## Phase 8: the CiWi interface
 
@@ -217,8 +224,9 @@ screen that can be turned off in Settings.
 the serial terminal: `a`/`d` wheel, `e` centre click, `m` MENU, `h` MENU held. Emulated input can
 navigate and reject but cannot approve: only KEY held 2 s signs.
 
-With a provisioned TROPIC01 (phase 7) the first boot asks for a new PIN twice (MAC-and-Destroy,
-10 attempts); later boots ask for it. Anchor > Test signatures runs the phase 7 self-test with the
+With a new TROPIC01 the first boot asks the owner for a PIN (twice) and provisions the chip with it;
+later boots start LOCKED and ask for it (10 attempts, counted by TROPIC01). Settings > Change PIN
+keeps the same anchor key. Anchor > Test signatures runs the phase 7 self-test with the
 confirmation screens and prints the vectors on the UART. Without a TROPIC01 the interface runs in DEMO
 mode. Settings are stored in NORCOW.
 

@@ -8,10 +8,11 @@
  *
  * Steps (each prints PASS/FAIL):
  *   1. TROPIC01 bring-up: SPI, application firmware, chip ID and firmware versions.
- *   2. Provisioning, first run only: hold KEY for 3 s. Writes the CiWi pairing key (slot 1),
- *      generates the P-256 anchor key (ECC slot 0) and initialises the claim counter.
- *   3. Secure session with the CiWi key: ping, random numbers, sign + verify, counter.
- *   4. PIN with MAC-and-Destroy (test PIN 2468, bound to this STM32's unique ID).
+ *   2. Provisioning, first run only: hold KEY for 3 s. Boot key (slot 2), signing key (slot 1),
+ *      access policy, PIN (TEST PIN 2468, bound to this STM32's unique ID), P-256 anchor key
+ *      (ECC slot 0), claim counter. Then: boot session (LOCKED) and unlock with the PIN.
+ *   3. Signing session: ping, random numbers, sign + verify, counter.
+ *   4. PIN: lock, a wrong PIN, the right PIN.
  *   5. Anchor Protocol: a TEST shield signs a receipt, a bind and an NFT window record; the CiWi
  *      verifies each one and, after a KEY press, signs it with TROPIC01. The vectors are printed
  *      as JSON for tests/host/verify.js.
@@ -36,6 +37,8 @@
 #define KEY_PIN  GPIO_PIN_13 /* pressed = high (button to 3V3 on the WeAct board) */
 
 #define CONFIRM_TIMEOUT_MS 60000u
+/** Bench test PIN set at provisioning in phase 7. Phase 8 provisions with the owner's PIN. */
+#define PHASE7_TEST_PIN "2468"
 #define PROVISION_HOLD_MS  3000u
 
 extern void stm32_init(void);
@@ -191,26 +194,39 @@ int main(void)
     }
     expect("chip ID and firmware versions", ciwi_tr01_print_info(&g_t) == LT_OK);
 
-    /* ---- 2. provisioning (first run) */
-    CIWI_LOG("\r\n== 2. CiWi session / provisioning ==\r\n");
+    /* ---- 2. provisioning (first run), then unlock with the PIN */
+    CIWI_LOG("\r\n== 2. Provisioning / unlock ==\r\n");
+    uint8_t uid[12], left = 0;
+    mcu_uid(uid);
     r = ciwi_tr01_start(&g_t);
-    if (g_t.state == CIWI_TR01_STATE_NEW || g_t.state == CIWI_TR01_STATE_FOREIGN ||
-        !g_t.anchor_ready) {
-        if (g_t.state == CIWI_TR01_STATE_FOREIGN) {
-            CIWI_LOG("  This STM32 holds a pairing key that this TROPIC01 does not accept.\r\n");
-            CIWI_LOG("  Check the wiring first. Provisioning only proceeds if slot 1 is empty;\r\n");
-            CIWI_LOG("  nothing is erased.\r\n");
-        }
+    if (g_t.state == CIWI_TR01_STATE_FOREIGN) {
+        CIWI_LOG("  This STM32 holds keys that this TROPIC01 does not accept.\r\n");
+        CIWI_LOG("  Check the wiring and reset. Nothing is erased automatically.\r\n");
+        halt(1);
+    }
+    if (g_t.state == CIWI_TR01_STATE_NEW) {
         CIWI_LOG("  Not provisioned. Hold KEY for 3 s to provision this TROPIC01 (60 s)...\r\n");
+        CIWI_LOG("  Bench test: the first PIN will be the TEST PIN " PHASE7_TEST_PIN ".\r\n");
         if (!wait_hold(PROVISION_HOLD_MS, 60000u)) {
             CIWI_LOG("  Skipped.\r\n");
             halt(1);
         }
-        r = ciwi_tr01_provision(&g_t);
-        expect("provisioning", r == LT_OK);
+        r = ciwi_tr01_provision(&g_t, PHASE7_TEST_PIN, uid, sizeof(uid));
+        expect("provisioning (boot key, signing key, policy, PIN, anchor key)", r == LT_OK);
         if (r != LT_OK) halt(1);
+        ciwi_tr01_lock(&g_t);
     }
-    expect("secure session with CiWi key (SH1)", g_t.state == CIWI_TR01_STATE_READY);
+    expect("boot session (SH2): LOCKED, nothing can sign", g_t.state == CIWI_TR01_STATE_LOCKED &&
+                                                             !ciwi_tr01_anchor_pub(&g_t));
+    uint32_t t0 = HAL_GetTick();
+    r = ciwi_tr01_unlock(&g_t, PHASE7_TEST_PIN, uid, sizeof(uid), &left);
+    CIWI_LOG("  unlock (PIN check + SH1 session): %lu ms, %u attempts left\r\n",
+             (unsigned long)(HAL_GetTick() - t0), left);
+    if (r != LT_OK) {
+        CIWI_LOG("  The test PIN did not unlock (PIN changed in phase 8?). Stop.\r\n");
+        halt(1);
+    }
+    expect("signing session (SH1) after the PIN", g_t.state == CIWI_TR01_STATE_READY);
     expect("anchor key loaded", g_t.anchor_ready);
     if (!g_t.anchor_ready) halt(1);
     ciwi_log_hex("  anchor pubX : ", ciwi_tr01_anchor_pub(&g_t), 32);
@@ -224,7 +240,7 @@ int main(void)
     expect("random (TROPIC01 TRNG xor STM32 RNG)", ciwi_tr01_random(&g_t, buf, sizeof(buf)) == LT_OK);
     uint8_t digest[32], sig[64];
     memcpy(digest, buf, 32);
-    uint32_t t0 = HAL_GetTick();
+    t0 = HAL_GetTick();
     r = ciwi_tr01_anchor_sign(&g_t, digest, sig);
     CIWI_LOG("  P-256 sign + local verify: %lu ms\r\n", (unsigned long)(HAL_GetTick() - t0));
     expect("anchor signature (low-s, verified before release)", r == LT_OK);
@@ -232,32 +248,16 @@ int main(void)
     expect("claim counter", ciwi_tr01_claim_counter(&g_t, &ctr) == LT_OK);
     CIWI_LOG("  ciwiCounter = %lu\r\n", (unsigned long)ctr);
 
-#ifndef CIWI_PHASE7_PIN_TEST
-#define CIWI_PHASE7_PIN_TEST 1
-#endif
-#if CIWI_PHASE7_PIN_TEST
     /* ---- 4. PIN */
-    CIWI_LOG("\r\n== 4. PIN with MAC-and-Destroy (test PIN 2468; replaces any PIN state) ==\r\n");
-    uint8_t uid[12], k1[CIWI_PIN_KEY_LEN], k2[CIWI_PIN_KEY_LEN], left = 0;
-    mcu_uid(uid);
-    t0 = HAL_GetTick();
-    r = ciwi_pin_set(&g_t, "2468", uid, sizeof(uid), k1);
-    CIWI_LOG("  set PIN: %lu ms\r\n", (unsigned long)(HAL_GetTick() - t0));
-    expect("set PIN", r == LT_OK);
-    t0 = HAL_GetTick();
-    r = ciwi_pin_check(&g_t, "2468", uid, sizeof(uid), k2);
-    CIWI_LOG("  check PIN: %lu ms\r\n", (unsigned long)(HAL_GetTick() - t0));
-    expect("correct PIN releases the same key", r == LT_OK && memcmp(k1, k2, 32) == 0);
-    expect("wrong PIN refused", ciwi_pin_check(&g_t, "1111", uid, sizeof(uid), k2) != LT_OK);
-    expect("one attempt used", ciwi_pin_attempts_left(&g_t, &left) == LT_OK &&
-                                   left == CIWI_PIN_ATTEMPTS - 1);
-    expect("correct PIN again", ciwi_pin_check(&g_t, "2468", uid, sizeof(uid), k2) == LT_OK &&
-                                    memcmp(k1, k2, 32) == 0);
-    expect("attempts reset", ciwi_pin_attempts_left(&g_t, &left) == LT_OK &&
-                                 left == CIWI_PIN_ATTEMPTS);
-    memset(k1, 0, sizeof(k1));
-    memset(k2, 0, sizeof(k2));
-#endif
+    CIWI_LOG("\r\n== 4. PIN with MAC-and-Destroy ==\r\n");
+    expect("lock: back to the boot session", ciwi_tr01_lock(&g_t) == LT_OK &&
+                                                g_t.state == CIWI_TR01_STATE_LOCKED);
+    expect("wrong PIN refused, one attempt used",
+           ciwi_tr01_unlock(&g_t, "1111", uid, sizeof(uid), &left) != LT_OK &&
+               left == CIWI_PIN_ATTEMPTS - 1);
+    expect("test PIN unlocks, attempts reset",
+           ciwi_tr01_unlock(&g_t, PHASE7_TEST_PIN, uid, sizeof(uid), &left) == LT_OK &&
+               left == CIWI_PIN_ATTEMPTS);
 
     /* ---- 5. Anchor Protocol */
     CIWI_LOG("\r\n== 5. Anchor Protocol (TEST shield key; confirm each signature with KEY) ==\r\n");

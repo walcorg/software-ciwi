@@ -3,7 +3,7 @@
 #
 #   make            build ./ciwi_host
 #   make test          start the model, run ciwi_host, then verify.js
-#   make test-rconfig  same, with the CiWi access policy applied and checked
+#   make test-no-policy  same, without the CiWi access policy (development option)
 #
 # Needs: gcc, the model server (pip install ts-tvl, see README.md), node + npm for verify.js.
 # =============================================================================
@@ -13,6 +13,7 @@ LT        := $(VENDOR)/libtropic
 TC        := $(VENDOR)/trezor-firmware/crypto
 MODEL_CFG ?= $(LT)/scripts/tropic01_model/model_cfg.yml
 MODEL     ?= model_server
+SHELL     := /bin/bash
 
 LT_SRCS := $(addprefix $(LT)/src/,libtropic.c lt_crc16.c lt_port_wrap.c lt_l1.c libtropic_l2.c \
            lt_l2_frame_check.c lt_l3_process.c libtropic_l3.c lt_hkdf.c lt_asn1_der.c \
@@ -48,18 +49,20 @@ ciwi_host: $(CIWI_SRCS) $(LT_SRCS) $(TC_SRCS) $(wildcard $(ROOT)/tropic/*.h $(RO
 	$(CC) $(CFLAGS) $(CIWI_SRCS) $(LT_SRCS) $(TC_SRCS) -o $@
 
 test: ciwi_host
-	@rm -f ciwi-keystore.bin vectors.json
-	@$(MODEL) tcp -c $(MODEL_CFG) > model.log 2>&1 & echo $$! > model.pid; sleep 4
+	@rm -f ciwi-keystore.* vectors.json
+	@$(MODEL) tcp -c $(MODEL_CFG) > model.log 2>&1 & echo $$! > model.pid; \
+	 for i in $$(seq 60); do grep -q 'Listening for new connection' model.log 2>/dev/null && break; sleep 0.5; done
 	@./ciwi_host vectors.json; status=$$?; kill `cat model.pid`; rm -f model.pid; \
 	 test $$status -eq 0 && node verify.js vectors.json
 
-# Same run with the CiWi access policy written to the R-config, plus checks that it is enforced.
-test-rconfig:
-	$(MAKE) -B ciwi_host EXTRA_CFLAGS="-DCIWI_TR01_APPLY_RCONFIG=1"
+# Same run WITHOUT the access policy (development option): everything works, but the PIN does
+# not protect the anchor key. The policy checks (section 4b) are skipped.
+test-no-policy:
+	$(MAKE) -B ciwi_host EXTRA_CFLAGS="-DCIWI_TR01_APPLY_RCONFIG=0"
 	$(MAKE) test
 	$(MAKE) -B ciwi_host
 
 clean:
-	rm -f ciwi_host ciwi-keystore.bin vectors.json model.log model.pid
+	rm -f ciwi_host ciwi-keystore.* vectors.json model.log model.pid
 
-.PHONY: test test-rconfig clean
+.PHONY: test test-no-policy clean

@@ -10,8 +10,9 @@
  * from the serial terminal: a/d wheel, e centre click, m MENU, h MENU held. Emulated input can
  * navigate and reject, but only KEY held 2 s approves a signature.
  *
- * First boot with a provisioned TROPIC01 (phase 7): the CiWi asks for a new PIN twice and stores
- * it with MAC-and-Destroy. Then every boot asks for the PIN.
+ * First boot with a new TROPIC01: the owner chooses the PIN (twice) and the chip is provisioned
+ * with it (boot key, encrypted signing key, access policy, anchor key). Every boot after that
+ * starts LOCKED and asks for the PIN; only the right PIN makes the signing key usable.
  */
 #include <stdio.h>
 #include <string.h>
@@ -30,7 +31,7 @@
 #include "ui_app.h"
 #include "ui_platform_stm32.h"
 
-#define FW_VERSION "0.4.0"
+#define FW_VERSION "0.5.0"
 
 extern void stm32_init(void);
 
@@ -59,12 +60,12 @@ static void short_hex(const uint8_t *b, size_t n, char *out)
 static const char *const *identity_lines(void)
 {
     int i = 0;
-    if (g_tr01) {
+    if (g_tr01 && ciwi_tr01_ciwi_id(&g_t)) {
         g_lines[i++] = "ciwiId";
         short_hex(ciwi_tr01_ciwi_id(&g_t), 32, g_id1);
         g_lines[i++] = g_id1;
         g_lines[i++] = g_tr01_ver;
-    } else {
+    } else if (!g_tr01) {
         g_lines[i++] = "DEMO: sin TROPIC01";
     }
     snprintf(g_id2, sizeof(g_id2), "Firmware %s", FW_VERSION);
@@ -75,51 +76,90 @@ static const char *const *identity_lines(void)
 
 /* ------------------------------------------------------------------ PIN */
 
-static bool create_pin(void)
+/** Ask for a new PIN twice. Returns false if the owner cancelled. */
+static bool ask_new_pin(char out[9])
 {
-    char a[9], b[9];
-    uint8_t key[CIWI_PIN_KEY_LEN];
+    char again[9];
     for (;;) {
-        if (ui_run_pin(ui_str(S_PIN_NEW), NULL, a) != UI_PIN_OK) continue;
-        if (ui_run_pin(ui_str(S_PIN_REPEAT), NULL, b) != UI_PIN_OK) continue;
-        if (strcmp(a, b) != 0) {
-            ui_run_message(ui_str(S_PIN_NEW), ui_str(S_PIN_MISMATCH), UI_MSG_BAD);
-            continue;
-        }
-        ui_show_message(ui_str(S_PIN_NEW), "TROPIC01...", UI_MSG_INFO);
-        lt_ret_t r = ciwi_pin_set(&g_t, a, g_uid, sizeof(g_uid), key);
-        memset(a, 0, sizeof(a));
-        memset(b, 0, sizeof(b));
-        memset(key, 0, sizeof(key)); /* will wrap the seed in the next version */
-        if (r == LT_OK) return true;
-        ui_run_message(ui_str(S_PIN_NEW), lt_ret_verbose(r), UI_MSG_BAD);
+        if (ui_run_pin(ui_str(S_PIN_NEW), NULL, out) != UI_PIN_OK) return false;
+        if (ui_run_pin(ui_str(S_PIN_REPEAT), NULL, again) != UI_PIN_OK) continue;
+        bool same = strcmp(out, again) == 0;
+        memset(again, 0, sizeof(again));
+        if (same) return true;
+        ui_run_message(ui_str(S_PIN_NEW), ui_str(S_PIN_MISMATCH), UI_MSG_BAD);
     }
 }
 
+/** First boot: the owner chooses the PIN and the TROPIC01 is provisioned with it. */
+static bool setup(void)
+{
+    char pin[9];
+    ui_run_message(ui_str(S_SETUP), ui_str(S_PIN_NEW), UI_MSG_INFO);
+    while (!ask_new_pin(pin)) {}
+    ui_show_message(ui_str(S_SETUP), "TROPIC01...", UI_MSG_INFO);
+    lt_ret_t r = ciwi_tr01_provision(&g_t, pin, g_uid, sizeof(g_uid));
+    memset(pin, 0, sizeof(pin));
+    if (r != LT_OK) {
+        ui_run_message(ui_str(S_SETUP), lt_ret_verbose(r), UI_MSG_BAD);
+        return false;
+    }
+    return true;
+}
+
+/** Lock screen / boot: the signing key is usable only after the right PIN. */
 static bool unlock(void)
 {
     if (!g_tr01) return true; /* DEMO mode */
-    uint8_t left = 0;
-    if (ciwi_pin_attempts_left(&g_t, &left) != LT_OK) return create_pin();
+    if (g_t.state == CIWI_TR01_STATE_NEW) return setup();
+    if (g_t.state == CIWI_TR01_STATE_READY) ciwi_tr01_lock(&g_t);
     for (;;) {
+        uint8_t left = 0;
+        ciwi_tr01_attempts_left(&g_t, &left);
         if (left == 0) {
             ui_run_message(ui_str(S_LOCKED), ui_str(S_PIN_LOCKED), UI_MSG_BAD);
             return false;
         }
         char note[32], pin[9];
         snprintf(note, sizeof(note), ui_str(S_PIN_LEFT), left);
-        if (ui_run_pin(ui_str(S_PIN_ENTER), left < CIWI_PIN_ATTEMPTS ? note : NULL, pin) != UI_PIN_OK) {
+        if (ui_run_pin(ui_str(S_PIN_ENTER), left < CIWI_PIN_ATTEMPTS ? note : NULL, pin) !=
+            UI_PIN_OK) {
             return false;
         }
         ui_show_message(ui_str(S_PIN_ENTER), "TROPIC01...", UI_MSG_INFO);
-        uint8_t key[CIWI_PIN_KEY_LEN];
-        lt_ret_t r = ciwi_pin_check(&g_t, pin, g_uid, sizeof(g_uid), key);
+        lt_ret_t r = ciwi_tr01_unlock(&g_t, pin, g_uid, sizeof(g_uid), &left);
         memset(pin, 0, sizeof(pin));
-        memset(key, 0, sizeof(key));
         if (r == LT_OK) return true;
-        ciwi_pin_attempts_left(&g_t, &left);
+        if (r != LT_FAIL) {                     /* not a wrong PIN: a chip or storage error */
+            ui_run_message(ui_str(S_PIN_ENTER), lt_ret_verbose(r), UI_MSG_BAD);
+            continue;
+        }
         snprintf(note, sizeof(note), ui_str(S_PIN_LEFT), left);
         ui_run_message(ui_str(S_PIN_WRONG), note, UI_MSG_BAD);
+    }
+}
+
+/** Settings > Change PIN. */
+static void change_pin(void)
+{
+    char old[9], neu[9];
+    if (!g_tr01) {
+        ui_run_message(ui_str(S_CHANGE_PIN), "DEMO: sin TROPIC01.", UI_MSG_BAD);
+        return;
+    }
+    if (ui_run_pin(ui_str(S_PIN_OLD), NULL, old) != UI_PIN_OK) return;
+    if (!ask_new_pin(neu)) {
+        memset(old, 0, sizeof(old));
+        return;
+    }
+    ui_show_message(ui_str(S_CHANGE_PIN), "TROPIC01...", UI_MSG_INFO);
+    lt_ret_t r = ciwi_tr01_change_pin(&g_t, old, neu, g_uid, sizeof(g_uid));
+    memset(old, 0, sizeof(old));
+    memset(neu, 0, sizeof(neu));
+    if (r == LT_OK) {
+        ui_run_message(ui_str(S_CHANGE_PIN), ui_str(S_PIN_CHANGED), UI_MSG_GOOD);
+    } else {
+        ui_run_message(ui_str(S_CHANGE_PIN), ui_str(S_PIN_WRONG), UI_MSG_BAD);
+        unlock(); /* a failed change leaves the CiWi locked */
     }
 }
 
@@ -191,7 +231,12 @@ int main(void)
     backlight_set((uint8_t)(s.brightness * 51));
 
     /* TROPIC01: present and provisioned (phase 7) -> real PIN and signatures; else DEMO. */
-    if (ciwi_tr01_open(&g_t) == LT_OK && ciwi_tr01_start(&g_t) == LT_OK) {
+    ciwi_tr01_state_t st = CIWI_TR01_STATE_UNKNOWN;
+    if (ciwi_tr01_open(&g_t) == LT_OK) {
+        ciwi_tr01_start(&g_t);
+        st = g_t.state;
+    }
+    if (st == CIWI_TR01_STATE_LOCKED || st == CIWI_TR01_STATE_NEW) {
         g_tr01 = true;
         uint8_t v[TR01_L2_GET_INFO_RISCV_FW_SIZE];
         if (lt_get_info_riscv_fw_ver(&g_t.lt, v) == LT_OK) {
@@ -199,11 +244,12 @@ int main(void)
         }
         ui_platform_stm32_set_status("USB \xC2\xB7 TROPIC01");
     } else {
-        CIWI_LOG("[UI] TROPIC01 not ready (run phase 7 to provision): DEMO mode\r\n");
+        CIWI_LOG("[UI] TROPIC01 not found or keys rejected: DEMO mode\r\n");
         ui_platform_stm32_set_status("DEMO \xC2\xB7 sin TROPIC01");
     }
 
-    static const ui_actions_t actions = {unlock, anchor_test, identity_lines, FW_VERSION};
+    static const ui_actions_t actions = {unlock, anchor_test, change_pin, identity_lines,
+                                         FW_VERSION};
     ui_app_init(plat, &actions, &s);
 
     while (!unlock()) {

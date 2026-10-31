@@ -10,7 +10,8 @@
  * Scheme: Tropic Square application note ODN_TR01_app_002 (PIN verification), as in the libtropic
  * "mac_and_destroy" example, with the slot re-arming fixed to cover every used slot.
  *
- * Requires an open CiWi session (ciwi_tr01_start() == LT_OK).
+ * Requires the CiWi boot session (state LOCKED): the access policy lets only SH2 use the
+ * MAC-and-Destroy slots and the PIN state. tr01_ciwi.c calls these functions; the wallet does not.
  */
 #ifndef TR01_PIN_H
 #define TR01_PIN_H
@@ -31,8 +32,8 @@
 #define CIWI_PIN_KEY_LEN 32
 
 /**
- * Set a new PIN (also used to change it). Generates a fresh secret, so the previous pin_key is
- * no longer valid: re-encrypt the seed with the new pin_key.
+ * Set a new PIN with a fresh secret: the previous pin_key is no longer valid. Used once, when the
+ * CiWi is provisioned. To change the PIN use ciwi_pin_change(), which keeps the pin_key.
  *
  * @param bind     Extra data mixed into every key (the STM32 unique ID): the PIN state only
  *                 works with this MCU and this TROPIC01.
@@ -46,6 +47,13 @@ lt_ret_t ciwi_pin_set(ciwi_tr01_t *t, const char *pin, const uint8_t *bind, uint
  */
 lt_ret_t ciwi_pin_check(ciwi_tr01_t *t, const char *pin, const uint8_t *bind, uint8_t bind_len,
                         uint8_t pin_key[CIWI_PIN_KEY_LEN]);
+
+/**
+ * Change the PIN: checks old_pin (consumes an attempt if wrong) and re-arms the slots for new_pin
+ * with the SAME secret, so pin_key does not change and nothing encrypted with it needs updating.
+ */
+lt_ret_t ciwi_pin_change(ciwi_tr01_t *t, const char *old_pin, const char *new_pin,
+                         const uint8_t *bind, uint8_t bind_len, uint8_t pin_key[CIWI_PIN_KEY_LEN]);
 
 /** Attempts left (0 = locked, the secret is destroyed). */
 lt_ret_t ciwi_pin_attempts_left(ciwi_tr01_t *t, uint8_t *left);

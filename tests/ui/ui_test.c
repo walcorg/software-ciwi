@@ -128,12 +128,12 @@ static void settings_changed(const ui_settings_t *s) { g_saved = *s; }
 static const char *status_text(void) { return "USB \xC2\xB7 TROPIC01"; }
 
 static bool unlock(void) { g_unlocks++; return true; }
-static const char *const ID_LINES[] = {"ciwiId", "0x2fa1...c09e", "Firmware 0.4.0", "TROPIC01 2.2.0",
+static const char *const ID_LINES[] = {"ciwiId", "0x2fa1...c09e", "Firmware 0.5.0", "TROPIC01 2.2.0",
                                        NULL};
 static const char *const *identity(void) { return ID_LINES; }
 
 static const ui_platform_t PLAT = {now_ms, poll, random32, settings_changed, status_text, running};
-static const ui_actions_t ACT = {unlock, NULL, identity, "0.4.0"};
+static const ui_actions_t ACT = {unlock, NULL, NULL, identity, "0.5.0"};
 
 #define BTN UI_SRC_BUTTON
 #define EMU UI_SRC_EMULATED

@@ -20,9 +20,8 @@
  * click-wheel (PB6, PB7), microSD (PC8-PC12, PD2, PA8), USB (PA11, PA12), UART (PA9, PA10),
  * LED (PB2), KEY (PC13) and VCAP (PB11).
  *
- * Pairing key: stored in NORCOW (STORAGE_APP_TROPIC, key 0x01) as priv || pub, 64 bytes.
- * It is protected by the flash read-out protection (RDP), as in Trezor's design. Without RDP a
- * debugger can read it; on the development board that is expected.
+ * Keys in NORCOW (STORAGE_APP_TROPIC): the SH2 boot key (record 1, plain, can only check the
+ * PIN) and the SH1 key (record 2, encrypted with the PIN key). See tr01_ciwi.c.
  */
 #include <string.h>
 
@@ -40,8 +39,6 @@
 #define TR01_CS_PIN        GPIO_PIN_12
 #define TR01_GPO_PIN       GPIO_PIN_10
 #define TR01_PORT          GPIOB
-
-#define KEYSTORE_KEY_PAIRING 0x01
 
 static lt_dev_stm32f4xx_t g_dev;
 
@@ -98,34 +95,19 @@ bool tr01_platform_random(uint8_t *buf, size_t len)
     return rng_fill_buffer(buf, (uint32_t)len);
 }
 
-bool tr01_keystore_load(uint8_t priv[TR01_PAIRING_KEY_LEN], uint8_t pub[TR01_PAIRING_KEY_LEN])
+bool tr01_keystore_load(tr01_ks_id_t id, uint8_t *buf, uint16_t max, uint16_t *len)
 {
-    uint8_t buf[2 * TR01_PAIRING_KEY_LEN];
-    uint16_t n = 0;
-    bool ok = storage_get(STORAGE_APP_TROPIC, KEYSTORE_KEY_PAIRING, buf, sizeof(buf), &n) &&
-              n == sizeof(buf);
-    if (ok) {
-        memcpy(priv, buf, TR01_PAIRING_KEY_LEN);
-        memcpy(pub, buf + TR01_PAIRING_KEY_LEN, TR01_PAIRING_KEY_LEN);
-    }
-    memset(buf, 0, sizeof(buf));
-    return ok;
+    return storage_get(STORAGE_APP_TROPIC, (uint8_t)id, buf, max, len);
 }
 
-bool tr01_keystore_save(const uint8_t priv[TR01_PAIRING_KEY_LEN],
-                        const uint8_t pub[TR01_PAIRING_KEY_LEN])
+bool tr01_keystore_save(tr01_ks_id_t id, const uint8_t *buf, uint16_t len)
 {
-    uint8_t buf[2 * TR01_PAIRING_KEY_LEN];
-    memcpy(buf, priv, TR01_PAIRING_KEY_LEN);
-    memcpy(buf + TR01_PAIRING_KEY_LEN, pub, TR01_PAIRING_KEY_LEN);
-    bool ok = storage_put(STORAGE_APP_TROPIC, KEYSTORE_KEY_PAIRING, buf, sizeof(buf));
-    memset(buf, 0, sizeof(buf));
-    return ok;
+    return storage_put(STORAGE_APP_TROPIC, (uint8_t)id, buf, len);
 }
 
-bool tr01_keystore_erase(void)
+bool tr01_keystore_erase(tr01_ks_id_t id)
 {
-    /* A zero-length entry marks the key as deleted (the old bytes stay until the NORCOW sector is
-     * compacted or erased). */
-    return storage_put(STORAGE_APP_TROPIC, KEYSTORE_KEY_PAIRING, NULL, 0);
+    /* A zero-length entry marks the record as deleted (the old bytes stay until the NORCOW
+     * sector is compacted or erased). */
+    return storage_put(STORAGE_APP_TROPIC, (uint8_t)id, NULL, 0);
 }

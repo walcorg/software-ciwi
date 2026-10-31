@@ -44,6 +44,8 @@ typedef struct {
     bool (*unlock)(void);
     /** Anchor > Test signatures. */
     void (*anchor_test)(void);
+    /** Settings > Change PIN (asks for the old PIN and the new one twice). May be NULL. */
+    void (*change_pin)(void);
     /** Lines for Anchor > CiWi identity and Settings > Information (NULL-terminated). */
     const char *const *(*identity_lines)(void);
     const char *fw_version;

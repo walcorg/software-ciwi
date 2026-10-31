@@ -1,5 +1,5 @@
 # =============================================================================
-# software-ciwi v0.4 — Makefile
+# software-ciwi v0.5 — Makefile
 # Target: STM32F405RGT6 (WeAct Core Board / CiWi)
 #
 #   make                 → phase 1 (default)

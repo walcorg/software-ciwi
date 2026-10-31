@@ -83,8 +83,10 @@ static lt_ret_t arm_slots(ciwi_tr01_t *t, const uint8_t u[32], int from)
     return LT_OK;
 }
 
-lt_ret_t ciwi_pin_set(ciwi_tr01_t *t, const char *pin, const uint8_t *bind, uint8_t bind_len,
-                      uint8_t pin_key[CIWI_PIN_KEY_LEN])
+/** Set the PIN for a given secret s (random for a new PIN, the same s when changing it). */
+static lt_ret_t pin_set_secret(ciwi_tr01_t *t, const char *pin, const uint8_t *bind,
+                               uint8_t bind_len, const uint8_t s_in[32],
+                               uint8_t pin_key[CIWI_PIN_KEY_LEN])
 {
     uint8_t in[CIWI_PIN_LEN_MAX + 64];
     uint8_t s[32], u[32], v[32], w[32], k[32];
@@ -98,8 +100,11 @@ lt_ret_t ciwi_pin_set(ciwi_tr01_t *t, const char *pin, const uint8_t *bind, uint
     if (!in_len) return LT_PARAM_ERR;
     if (!t->session_open) return LT_HOST_NO_SESSION;
 
-    r = ciwi_tr01_random(t, s, sizeof(s));
-    if (r != LT_OK) goto out;
+    if (s_in) {
+        memcpy(s, s_in, sizeof(s));
+    } else if ((r = ciwi_tr01_random(t, s, sizeof(s))) != LT_OK) {
+        goto out;
+    }
 
     st.version = PIN_STATE_VERSION;
     st.left = CIWI_PIN_ATTEMPTS;
@@ -133,15 +138,16 @@ out:
     return r;
 }
 
-lt_ret_t ciwi_pin_check(ciwi_tr01_t *t, const char *pin, const uint8_t *bind, uint8_t bind_len,
-                        uint8_t pin_key[CIWI_PIN_KEY_LEN])
+/** Check a PIN; on success the slots are re-armed and the secret s is returned. */
+static lt_ret_t pin_check_secret(ciwi_tr01_t *t, const char *pin, const uint8_t *bind,
+                                 uint8_t bind_len, uint8_t s_out[32])
 {
     uint8_t in[CIWI_PIN_LEN_MAX + 64];
     uint8_t s[32], u[32], v[32], w[32], k[32], tag[32];
     pin_state_t st;
     lt_ret_t r;
 
-    memset(pin_key, 0, CIWI_PIN_KEY_LEN);
+    memset(s_out, 0, 32);
     uint32_t in_len = pin_input(pin, bind, bind_len, in, sizeof(in));
     if (!in_len) return LT_PARAM_ERR;
     if (!t->session_open) return LT_HOST_NO_SESSION;
@@ -181,7 +187,7 @@ lt_ret_t ciwi_pin_check(ciwi_tr01_t *t, const char *pin, const uint8_t *bind, ui
     if ((r = arm_slots(t, u, i)) != LT_OK) goto out;
     st.left = CIWI_PIN_ATTEMPTS;
     if ((r = state_write(t, &st)) != LT_OK) goto out;
-    kdf(s, 32, (const uint8_t *)"2", 1, pin_key);
+    memcpy(s_out, s, 32);
     r = LT_OK;
 
 out:
@@ -193,6 +199,34 @@ out:
     memzero(k, sizeof(k));
     memzero(tag, sizeof(tag));
     memzero(&st, sizeof(st));
+    return r;
+}
+
+lt_ret_t ciwi_pin_set(ciwi_tr01_t *t, const char *pin, const uint8_t *bind, uint8_t bind_len,
+                      uint8_t pin_key[CIWI_PIN_KEY_LEN])
+{
+    return pin_set_secret(t, pin, bind, bind_len, NULL, pin_key);
+}
+
+lt_ret_t ciwi_pin_check(ciwi_tr01_t *t, const char *pin, const uint8_t *bind, uint8_t bind_len,
+                        uint8_t pin_key[CIWI_PIN_KEY_LEN])
+{
+    uint8_t s[32];
+    memset(pin_key, 0, CIWI_PIN_KEY_LEN);
+    lt_ret_t r = pin_check_secret(t, pin, bind, bind_len, s);
+    if (r == LT_OK) kdf(s, 32, (const uint8_t *)"2", 1, pin_key);
+    memzero(s, sizeof(s));
+    return r;
+}
+
+lt_ret_t ciwi_pin_change(ciwi_tr01_t *t, const char *old_pin, const char *new_pin,
+                         const uint8_t *bind, uint8_t bind_len, uint8_t pin_key[CIWI_PIN_KEY_LEN])
+{
+    uint8_t s[32];
+    memset(pin_key, 0, CIWI_PIN_KEY_LEN);
+    lt_ret_t r = pin_check_secret(t, old_pin, bind, bind_len, s);
+    if (r == LT_OK) r = pin_set_secret(t, new_pin, bind, bind_len, s, pin_key);
+    memzero(s, sizeof(s));
     return r;
 }
 

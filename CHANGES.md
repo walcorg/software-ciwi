@@ -1,3 +1,27 @@
+# Changes from v0.4 to v0.5
+
+## The PIN now guards the signing key
+
+Prompted by T. Roche, L. Imbert, V. Lomné, *Side-channel Attacks on Blinded Scalar Multiplications
+Revisited*, CARDIS 2019 ([ePrint 2019/1220](https://eprint.iacr.org/2019/1220)): keys used over and
+over (the X25519 handshake of every session) can be recovered by side channels. Until v0.4 the STM32
+held the only pairing key in plain, so anyone who extracted it could make TROPIC01 sign without the
+PIN. Details: [`SECURITY.md`](SECURITY.md).
+
+| Change | Files |
+| --- | --- |
+| Two host keys: SH2 (boot, plain) can only check the PIN; SH1 (signing) is stored encrypted with a key released by the PIN | `tropic/tr01_ciwi.{c,h}`, `tropic/tr01_platform*.{c,h}` |
+| Boot starts LOCKED: `ciwi_tr01_start()` → `ciwi_tr01_unlock(PIN)` → READY; `ciwi_tr01_lock()` | `tropic/tr01_ciwi.c` |
+| Access policy (R-config) on by default: anchor key and counter only from SH1, PIN only from SH2, policy and pairing keys only from SH1 (the public factory key can no longer undo it) | `tropic/tr01_ciwi.c` |
+| Provisioning takes the owner's first PIN; phase 7 uses the test PIN 2468, phase 8 asks the owner | `phases/phase7`, `phases/phase8` |
+| PIN change keeps the same secret, so the PIN key and the encrypted SH1 record stay valid | `tropic/tr01_pin.{c,h}` (`ciwi_pin_change`) |
+| Settings > Change PIN | `ciwi_ui/`, `phases/phase8` |
+| Host tests: 63 checks, including the policy enforced by TROPIC01 and a damaged key record | `tests/host` |
+
+The keystore format changed (records 1 and 2): a TROPIC01 provisioned with v0.3/v0.4 is not
+compatible, its slot 1 is already written. Use a new chip, or slot 3 after changing
+`CIWI_TR01_SIGN_SLOT`.
+
 # Changes from v0.3 to v0.4
 
 ## New: phase 8, the CiWi interface

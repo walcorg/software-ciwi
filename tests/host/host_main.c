@@ -69,24 +69,45 @@ int main(int argc, char **argv)
     if (r != LT_OK) return 1;
     EXPECT("chip info", ciwi_tr01_print_info(&t) == LT_OK);
 
-    printf("== 2. Provisioning (SH0 -> SH1, anchor key, counter) ==\n");
-    tr01_keystore_erase();
+    static const uint8_t bind[12] = {0x31, 0x00, 0x2b, 0x00, 0x12, 0x51, 0x33, 0x35,
+                                     0x37, 0x38, 0x39, 0x30}; /* stands in for the STM32 UID */
+    uint8_t left = 0;
+
+    printf("== 2. Provisioning (SH0 -> boot key SH2 + signing key SH1, policy, PIN, anchor key) ==\n");
+    tr01_keystore_erase(TR01_KS_BOOT);
+    tr01_keystore_erase(TR01_KS_SH1);
     EXPECT("start before provisioning reports NEW",
            ciwi_tr01_start(&t) != LT_OK && t.state == CIWI_TR01_STATE_NEW);
-    EXPECT("provision", ciwi_tr01_provision(&t) == LT_OK);
-    EXPECT("provision again is a no-op", ciwi_tr01_provision(&t) == LT_OK);
+    EXPECT("provision with the first PIN", ciwi_tr01_provision(&t, "2468", bind, sizeof(bind)) == LT_OK);
+    EXPECT("ends READY", t.state == CIWI_TR01_STATE_READY && t.anchor_ready);
+    EXPECT("provision again is refused", ciwi_tr01_provision(&t, "2468", bind, sizeof(bind)) != LT_OK);
+    uint8_t first_id[32];
+    memcpy(first_id, ciwi_tr01_ciwi_id(&t), 32);
 
-    printf("== 3. Normal boot (session SH1) ==\n");
+    printf("== 3. Normal boot: LOCKED until the PIN ==\n");
     ciwi_tr01_close(&t);
     EXPECT("re-open", ciwi_tr01_open(&t) == LT_OK);
-    EXPECT("start: session with SH1 + anchor key", ciwi_tr01_start(&t) == LT_OK);
-    EXPECT("state READY", t.state == CIWI_TR01_STATE_READY);
-    EXPECT("ping over secure channel", ciwi_tr01_ping(&t) == LT_OK);
+    EXPECT("start: boot session SH2, state LOCKED",
+           ciwi_tr01_start(&t) == LT_OK && t.state == CIWI_TR01_STATE_LOCKED);
+    uint8_t dg[32], sig[64];
+    fill(dg, 32, 0xa0);
+    EXPECT("LOCKED: no anchor key, no signature",
+           !ciwi_tr01_anchor_pub(&t) && ciwi_tr01_anchor_sign(&t, dg, sig) != LT_OK);
+    EXPECT("LOCKED: ping works", ciwi_tr01_ping(&t) == LT_OK);
+    EXPECT("attempts = 10", ciwi_tr01_attempts_left(&t, &left) == LT_OK && left == 10);
+    EXPECT("wrong PIN: stays LOCKED, 9 left",
+           ciwi_tr01_unlock(&t, "1357", bind, sizeof(bind), &left) != LT_OK && left == 9 &&
+               t.state == CIWI_TR01_STATE_LOCKED);
+    EXPECT("right PIN: READY, attempts back to 10",
+           ciwi_tr01_unlock(&t, "2468", bind, sizeof(bind), &left) == LT_OK && left == 10 &&
+               t.state == CIWI_TR01_STATE_READY);
+    EXPECT("ping over the signing session", ciwi_tr01_ping(&t) == LT_OK);
     uint8_t rnd[300];
     EXPECT("random 300 bytes (2 chunks)", ciwi_tr01_random(&t, rnd, sizeof(rnd)) == LT_OK);
     const uint8_t *apub = ciwi_tr01_anchor_pub(&t);
     const uint8_t *cid = ciwi_tr01_ciwi_id(&t);
-    EXPECT("anchor key loaded", apub && cid);
+    EXPECT("anchor key loaded, same ciwiId as at provisioning",
+           apub && cid && memcmp(cid, first_id, 32) == 0);
     if (!apub) return 1;
     ciwi_log_hex("  anchor X : ", apub, 32);
     ciwi_log_hex("  anchor Y : ", apub + 32, 32);
@@ -96,8 +117,6 @@ int main(int argc, char **argv)
     EXPECT("ciwiId matches anchor_device_id", memcmp(id2, cid, 32) == 0);
 
     printf("== 4. Signing ==\n");
-    uint8_t dg[32], sig[64];
-    fill(dg, 32, 0xa0);
     EXPECT("anchor sign (low-s, self-verified)", ciwi_tr01_anchor_sign(&t, dg, sig) == LT_OK);
     EXPECT("anchor_p256_verify accepts it", anchor_p256_verify(apub, dg, sig));
     sig[5] ^= 1;
@@ -111,61 +130,58 @@ int main(int argc, char **argv)
     EXPECT("counter strictly increasing by 1", c1 == c0 + 1 && c2 == c1 + 1);
 
 #if CIWI_TR01_APPLY_RCONFIG
-    printf("== 4b. Access policy (R-config) is enforced ==\n");
+    printf("== 4b. Access policy is enforced by TROPIC01 ==\n");
+    uint8_t md[32] = {0}, md_out[32];
+    ciwi_tr01_lock(&t);
+    EXPECT("boot session SH2 may NOT sign with the anchor key",
+           lt_ecc_ecdsa_sign(&t.lt, CIWI_TR01_ANCHOR_SLOT, dg, 32, sig) == LT_L3_UNAUTHORIZED);
+    EXPECT("boot session SH2 may NOT advance the claim counter",
+           lt_mcounter_update(&t.lt, CIWI_TR01_CLAIM_COUNTER) == LT_L3_UNAUTHORIZED);
+    EXPECT("boot session SH2 may NOT rewrite the policy",
+           lt_r_config_erase(&t.lt) == LT_L3_UNAUTHORIZED);
     lt_session_abort(&t.lt);
     t.session_open = false;
-    EXPECT("factory session SH0 still opens",
+    EXPECT("factory session SH0 (public key) still opens",
            lt_verify_chip_and_start_secure_session(&t.lt, lt_sh0priv_prod0, lt_sh0pub_prod0,
                                                    TR01_PAIRING_KEY_SLOT_INDEX_0) == LT_OK);
-    EXPECT("SH0 may NOT sign with the anchor key",
-           lt_ecc_ecdsa_sign(&t.lt, CIWI_TR01_ANCHOR_SLOT, dg, 32, sig) == LT_L3_UNAUTHORIZED);
-    EXPECT("SH0 may NOT advance the claim counter",
-           lt_mcounter_update(&t.lt, CIWI_TR01_CLAIM_COUNTER) == LT_L3_UNAUTHORIZED);
+    EXPECT("SH0 may NOT sign", lt_ecc_ecdsa_sign(&t.lt, CIWI_TR01_ANCHOR_SLOT, dg, 32, sig) ==
+                                   LT_L3_UNAUTHORIZED);
     EXPECT("SH0 may NOT erase the anchor key",
            lt_ecc_key_erase(&t.lt, CIWI_TR01_ANCHOR_SLOT) == LT_L3_UNAUTHORIZED);
-    lt_session_abort(&t.lt);
-    EXPECT("back to SH1", ciwi_tr01_start(&t) == LT_OK);
+    EXPECT("SH0 may NOT erase or rewrite the policy", lt_r_config_erase(&t.lt) == LT_L3_UNAUTHORIZED);
+    EXPECT("SH0 may NOT use the PIN slots (no PIN guessing)",
+           lt_mac_and_destroy(&t.lt, 0, md, md_out) == LT_L3_UNAUTHORIZED);
     static const uint8_t k32[32] = {1};
-    EXPECT("SH1 may NOT import a key into slot 1 (store disabled)",
+    EXPECT("SH0 may NOT write pairing slot 3",
+           lt_pairing_key_write(&t.lt, k32, TR01_PAIRING_KEY_SLOT_INDEX_3) == LT_L3_UNAUTHORIZED);
+    lt_session_abort(&t.lt);
+    t.session_open = false;
+    EXPECT("back to LOCKED, then READY with the PIN",
+           ciwi_tr01_start(&t) == LT_OK &&
+               ciwi_tr01_unlock(&t, "2468", bind, sizeof(bind), NULL) == LT_OK);
+    EXPECT("SH1 may NOT import a key (key store disabled)",
            lt_ecc_key_store(&t.lt, TR01_ECC_SLOT_1, TR01_CURVE_P256, k32) == LT_L3_UNAUTHORIZED);
 #endif
 
-    printf("== 5. PIN with MAC-and-Destroy ==\n");
-    static const uint8_t bind[12] = {0x31, 0x00, 0x2b, 0x00, 0x12, 0x51, 0x33, 0x35,
-                                     0x37, 0x38, 0x39, 0x30}; /* stands in for the STM32 UID */
-    uint8_t k_set[32], k_chk[32];
-    uint8_t left;
-    EXPECT("set PIN 2468", ciwi_pin_set(&t, "2468", bind, sizeof(bind), k_set) == LT_OK);
-    EXPECT("attempts = 10", ciwi_pin_attempts_left(&t, &left) == LT_OK && left == 10);
-    EXPECT("correct PIN", ciwi_pin_check(&t, "2468", bind, sizeof(bind), k_chk) == LT_OK);
-    EXPECT("same pin_key", memcmp(k_set, k_chk, 32) == 0);
-    /* Several correct entries in a row: catches slots that are not re-armed after a success. */
+    printf("== 5. PIN: repeated entries, change, binding ==\n");
     int ok3 = 1;
     for (int i = 0; i < 3; i++) {
-        ok3 &= ciwi_pin_check(&t, "2468", bind, sizeof(bind), k_chk) == LT_OK &&
-               memcmp(k_set, k_chk, 32) == 0;
+        ok3 &= ciwi_tr01_lock(&t) == LT_OK &&
+               ciwi_tr01_unlock(&t, "2468", bind, sizeof(bind), NULL) == LT_OK;
     }
-    EXPECT("correct PIN 3 more times in a row", ok3);
-    EXPECT("wrong PIN rejected", ciwi_pin_check(&t, "1357", bind, sizeof(bind), k_chk) != LT_OK);
-    EXPECT("wrong PIN rejected again", ciwi_pin_check(&t, "0000", bind, sizeof(bind), k_chk) != LT_OK);
-    EXPECT("attempts = 8", ciwi_pin_attempts_left(&t, &left) == LT_OK && left == 8);
-    EXPECT("right PIN with other bind data rejected",
-           ciwi_pin_check(&t, "2468", (const uint8_t *)"other-mcu-id", 12, k_chk) != LT_OK);
-    EXPECT("correct PIN after 3 failures", ciwi_pin_check(&t, "2468", bind, sizeof(bind), k_chk) == LT_OK &&
-                                               memcmp(k_set, k_chk, 32) == 0);
-    EXPECT("attempts reset to 10", ciwi_pin_attempts_left(&t, &left) == LT_OK && left == 10);
-    EXPECT("correct PIN again", ciwi_pin_check(&t, "2468", bind, sizeof(bind), k_chk) == LT_OK);
-    int wrong_all = 1;
-    for (int i = 0; i < CIWI_PIN_ATTEMPTS; i++) {
-        wrong_all &= ciwi_pin_check(&t, "9999", bind, sizeof(bind), k_chk) != LT_OK;
-    }
-    EXPECT("10 wrong PINs", wrong_all);
-    EXPECT("locked: correct PIN no longer works",
-           ciwi_pin_check(&t, "2468", bind, sizeof(bind), k_chk) != LT_OK);
-    EXPECT("new PIN can be set after lock", ciwi_pin_set(&t, "13579", bind, sizeof(bind), k_set) == LT_OK);
-    EXPECT("new PIN works", ciwi_pin_check(&t, "13579", bind, sizeof(bind), k_chk) == LT_OK &&
-                                memcmp(k_set, k_chk, 32) == 0);
-    EXPECT("non-digit PIN refused", ciwi_pin_set(&t, "12a4", bind, sizeof(bind), k_set) == LT_PARAM_ERR);
+    EXPECT("lock + unlock 3 times in a row (slots re-armed)", ok3);
+    EXPECT("change PIN 2468 -> 13579 (ends READY)",
+           ciwi_tr01_change_pin(&t, "2468", "13579", bind, sizeof(bind)) == LT_OK &&
+               t.state == CIWI_TR01_STATE_READY);
+    EXPECT("same anchor key after the change", memcmp(ciwi_tr01_ciwi_id(&t), first_id, 32) == 0);
+    ciwi_tr01_lock(&t);
+    EXPECT("old PIN no longer works", ciwi_tr01_unlock(&t, "2468", bind, sizeof(bind), NULL) != LT_OK);
+    EXPECT("right PIN with another MCU's ID is rejected",
+           ciwi_tr01_unlock(&t, "13579", (const uint8_t *)"other-mcu-id", 12, NULL) != LT_OK);
+    EXPECT("non-digit PIN refused",
+           ciwi_tr01_unlock(&t, "12a4", bind, sizeof(bind), NULL) == LT_PARAM_ERR);
+    EXPECT("new PIN works", ciwi_tr01_unlock(&t, "13579", bind, sizeof(bind), &left) == LT_OK &&
+                                left == 10);
 
     printf("== 6. Anchor Protocol messages (anchor_selftest, shared with phase 7) ==\n");
     J = fopen(out, "w");
@@ -174,15 +190,39 @@ int main(int argc, char **argv)
     anchor_selftest_run(&t, &io);
     fclose(J);
 
-    printf("== 7. Wrong key in the MCU (FOREIGN): nothing is overwritten ==\n");
-    uint8_t good_priv[32], good_pub[32], bad[32];
-    tr01_keystore_load(good_priv, good_pub);
+    printf("== 7. Damaged or foreign keys in the MCU: nothing is overwritten ==\n");
+    uint8_t boot_rec[64], sh1_rec[TR01_KS_MAX], bad[64];
+    uint16_t boot_len = 0, sh1_len = 0;
+    tr01_keystore_load(TR01_KS_BOOT, boot_rec, sizeof(boot_rec), &boot_len);
+    tr01_keystore_load(TR01_KS_SH1, sh1_rec, sizeof(sh1_rec), &sh1_len);
     memset(bad, 0x5a, sizeof(bad));
-    tr01_keystore_save(bad, bad);
-    EXPECT("start reports FOREIGN", ciwi_tr01_start(&t) != LT_OK && t.state == CIWI_TR01_STATE_FOREIGN);
-    EXPECT("provision refuses (slot 1 already written)", ciwi_tr01_provision(&t) == LT_L3_SLOT_NOT_EMPTY);
-    tr01_keystore_save(good_priv, good_pub);
-    EXPECT("original key still opens the session", ciwi_tr01_start(&t) == LT_OK);
+    tr01_keystore_save(TR01_KS_BOOT, bad, sizeof(bad));
+    ciwi_tr01_lock(&t);
+    EXPECT("wrong boot key: state FOREIGN", t.state == CIWI_TR01_STATE_FOREIGN);
+    EXPECT("provisioning refused (not a new CiWi)",
+           ciwi_tr01_provision(&t, "1111", bind, sizeof(bind)) != LT_OK);
+    tr01_keystore_save(TR01_KS_BOOT, boot_rec, boot_len);
+    EXPECT("original boot key opens again", ciwi_tr01_start(&t) == LT_OK);
+    uint8_t tampered[TR01_KS_MAX];
+    memcpy(tampered, sh1_rec, sh1_len);
+    tampered[20] ^= 1;                                /* a bit of the encrypted SH1 key */
+    tr01_keystore_save(TR01_KS_SH1, tampered, sh1_len);
+    EXPECT("tampered SH1 record: right PIN, but no signing session",
+           ciwi_tr01_unlock(&t, "13579", bind, sizeof(bind), NULL) == LT_CRYPTO_ERR &&
+               t.state == CIWI_TR01_STATE_LOCKED);
+    tr01_keystore_save(TR01_KS_SH1, sh1_rec, sh1_len);
+    EXPECT("restored record unlocks", ciwi_tr01_unlock(&t, "13579", bind, sizeof(bind), NULL) == LT_OK);
+
+    printf("== 8. Ten wrong PINs: the signing key is gone for good ==\n");
+    ciwi_tr01_lock(&t);
+    int wrong_all = 1;
+    for (int i = 0; i < CIWI_PIN_ATTEMPTS; i++) {
+        wrong_all &= ciwi_tr01_unlock(&t, "9999", bind, sizeof(bind), &left) != LT_OK;
+    }
+    EXPECT("10 wrong PINs, 0 left", wrong_all && left == 0);
+    EXPECT("the right PIN no longer unlocks",
+           ciwi_tr01_unlock(&t, "13579", bind, sizeof(bind), NULL) != LT_OK &&
+               t.state == CIWI_TR01_STATE_LOCKED);
 
     ciwi_tr01_close(&t);
     printf("\n%d passed, %d failed. Vectors: %s\n", g_pass, g_fail, out);

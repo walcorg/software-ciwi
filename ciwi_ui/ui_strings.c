@@ -58,6 +58,10 @@ static const char *const T[S__COUNT][2] = {
     [S_FIRMWARE] = {"Firmware", "Firmware"},
     [S_SIGN_HOLD_TITLE] = {"Firmar", "Sign"},
     [S_DONE] = {"Listo", "Done"},
+    [S_CHANGE_PIN] = {"Cambiar PIN", "Change PIN"},
+    [S_PIN_OLD] = {"PIN actual", "Current PIN"},
+    [S_PIN_CHANGED] = {"PIN cambiado.", "PIN changed."},
+    [S_SETUP] = {"Configurar CiWi", "Set up CiWi"},
 };
 
 void ui_set_lang(ui_lang_t lang) { g_lang = lang == UI_LANG_EN ? UI_LANG_EN : UI_LANG_ES; }
